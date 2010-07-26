@@ -1,6 +1,6 @@
 ;;;; -*- lisp -*-
 
-(in-package :it.bese.yaclml)
+(in-package :ucw)
 
 ;;;; * TAL - Dynamic HTML Templating
 
@@ -70,23 +70,60 @@
 ;;;; passed to included templates need to use the
 ;;;; "http://common-lisp.net/project/bese/tal/params" name space.
 
-(defvar *tal-attribute-handlers* '())
+(defvar *tal-attribute-handlers* (make-hash-table))
 
-(defvar *tal-tag-handlers* '())
+(defvar *tal-tag-handlers* (make-hash-table))
 
+;;;; Interning namespaced elements to packages
 (defparameter *uri-to-package*
   (list 
    (cons "http://common-lisp.net/project/bese/tal/core"
          (find-package :it.bese.yaclml.tal))
    (cons "http://common-lisp.net/project/bese/tal/params"
          (find-package :it.bese.yaclml.tal.include-params))
-   (cons "http://common-lisp.net/project/bese/yaclml/core"
-         (find-package :it.bese.yaclml.tags))
-   (cons "http://www.w3.org/XML/1998/namespace"
-         (find-package :it.bese.yaclml.xml))
-   (cons "http://www.w3.org/1999/xlink/"
-         (find-package :it.bese.yaclml.xlink)))
+;   (cons "http://common-lisp.net/project/bese/yaclml/core"
+;         (find-package :it.bese.yaclml.tags))
+;   (cons "http://www.w3.org/XML/1998/namespace"
+;         (find-package :it.bese.yaclml.xml))
+;   (cons "http://www.w3.org/1999/xlink/"
+;         (find-package :it.bese.yaclml.xlink)))
+   )
   "Default mapping of xmlns to packages.")
+
+
+(defclass interner (cxml:broadcast-handler)
+  ((uri-to-package :initform nil :initarg :uri-to-package
+		   :accessor uri-to-package)
+   (ns-test :initform #'string= :initarg :ns-test :accessor ns-test)))
+(defmethod sax:start-element ((handler interner)
+			      namespace-uri local-name qname attributes)
+  (let ((uri-to-package (uri-to-package handler))
+	(test (ns-test handler)))
+    (flet ((fpkg (ns) (cdr (assoc ns uri-to-package :test test))))
+      
+      (awhen (fpkg namespace-uri)
+	(setf local-name (intern (string-upcase local-name) it)
+	      namespace-uri nil))
+	
+      (iterate (for attr in attributes)
+	       (for ans = (sax:attribute-namespace-uri attr))
+	       (for pkg = (fpkg ans))
+	       (when pkg
+		 (let ((sym (intern (string-upcase (sax:attribute-local-name attr))
+				    pkg)))
+		   (setf (sax:attribute-local-name attr) sym
+			 (sax:attribute-qname attr) sym
+			 (sax:attribute-namespace-uri attr) nil)
+		   )))))
+  (call-next-method handler namespace-uri local-name qname attributes))
+
+(defun make-interner (uri-to-package chained-handler)
+  (make-instance 'interner
+		 :uri-to-package uri-to-package
+		 :handlers (list chained-handler)))
+;;;;
+
+
 
 (defvar *expression-package* nil
   "The value of *PACKAGE* when tal attribute expressions and for
@@ -96,17 +133,15 @@
 (defmacro def-attribute-handler (attribute (tag) &body body)
   "Defines a new attribute handler name ATTRIBUTE."
   `(progn
-     (push (cons ',attribute (lambda (,tag) ,@body))
-           *tal-attribute-handlers*)
+     (setf (gethash ',attribute *tal-attribute-handlers*)
+	   (lambda (,tag) ,@body))
      ',attribute))
 
 (defmacro def-tag-handler (tag-name (tag) &body body)
   "Defines a new tag handlec named TAG-NAME."
   `(progn
-     (push (cons ',tag-name (lambda (,tag)
-                              (declare (ignorable ,tag))
-                              ,@body))
-           *tal-tag-handlers*)
+     (setf (gethash ',tag-name *tal-tag-handlers*)
+	   (lambda (,tag) ,@body))
      ',tag-name))
 
 (def-special-environment tal-compile-environment ()
@@ -213,39 +248,81 @@
   "Transforms the lxml tree FORM into common lisp code (a series
   of calls to tag macros)."
   (flet ((find-attribute-handlers (attributes)
-	   (loop 
-	      for (key) on attributes by #'cddr
-	      for handler = (assoc key *tal-attribute-handlers* :test #'eql)
-	      when handler
-	      do (return-from transform-lxml-form
-		   (funcall (cdr handler) form))))
-	 (find-tag-handler (tag-name)
-	   (dolist* ((name . handler) *tal-tag-handlers*)
-             (when (eql name tag-name)
+	   (iterate
+	     (for attr in attributes)
+	     (for key = (first attr))
+	     (for handler = (and key (gethash key *tal-attribute-handlers*)))
+	     (when handler
 	       (return-from transform-lxml-form
-		 (funcall handler form)))))
+		 (funcall (cdr handler) form))) ))
+	 
+	 (find-tag-handler (tag-name)
+	   "Find the handler for the given tag. Tag must be an
+interned symbol (see the interner) for this to work."
+	   (awhen (gethash tag-name *tal-tag-handlers*)
+	     (return-from transform-lxml-form
+	       (funcall it form))))
 	 (handle-regular-tag (tag-name attributes body)
 	   (unless (member tag-name '(:comment :xml))
-	     `(,tag-name
-	       ,@(loop
-		    for (key value) on attributes by #'cddr
-		    nconc (list (intern (symbol-name key) :keyword)
-				(if (stringp value)
-				    (parse-tal-attribute-value value)
-				    value)))
-	       ,@(transform-lxml-tree body)))))
+	     (let* ((namespaces nil)
+		    (buildnode:*namespace-prefix-map*
+		     buildnode:*namespace-prefix-map*)
+		    (attrib-forms
+		     (flet ((add-ns (prefix ns)
+			      (push (list prefix ns) namespaces)
+			      (push (cons ns prefix)
+				    buildnode:*namespace-prefix-map*)
+			      nil))
+		       (loop
+			 for (key pre-value) in attributes
+			 for value = (if (stringp pre-value)
+					 (parse-tal-attribute-value pre-value)
+					 pre-value)
+			 append (if (consp key)
+				    (destructuring-bind (lname . ns) key
+				      ;; is it an xmlns attrb?
+				      (if (string= ns
+						   "http://www.w3.org/2000/xmlns/")
+					  (add-ns lname value)
+					  `((cxml:attribute*
+					     ,(buildnode::get-prefix ns)
+					     ,lname
+					     ,value))))
+				    `((cxml:attribute* nil ,key ,value))))))
+		    (element-form `(cxml:with-element*
+				       (,(and (consp tag-name)
+					      (buildnode::get-prefix
+					       (cdr tag-name)))
+					 ,(if (consp tag-name)
+					      (car tag-name)
+					      tag-name))
+				     ,@attrib-forms
+				     ,@(transform-lxml-tree body))))
+	       (dolist (p namespaces)
+		 (setf element-form `(cxml:with-namespace ,p
+				       ,element-form)))
+	       element-form))))
+    
     (if (stringp form)
-	`(<:as-is ,form)
-	(if (and (consp form)
-		 (consp (car form)))
-	    (destructuring-bind ((tag-name &rest attributes) &rest body) form
-	      ;; first see if there are any attribute handlers
-	      (find-attribute-handlers attributes)
-	      ;; first see if there's a handler for this tag
-	      (find-tag-handler tag-name)
-	      ;; didn't find a handler for that tag or any of it's
-	      ;; attributes, must be a "regular" yaclml tag.
-	      (handle-regular-tag tag-name attributes body))
+	`(cxml:text ,form)
+	(if (consp form)
+	    (destructuring-bind (name attributes &rest body) form
+	      (let ((tag-name
+		     (if (consp name)	; (name . namespace)
+			 (let ((pkg (cdr (assoc (cdr name) *uri-to-package*
+						:test #'string=))))
+			   (if pkg
+			       (intern (string-upcase (car name)) pkg)
+			       name))
+			 name)))
+		
+		;; first see if there are any attribute handlers
+		(find-attribute-handlers attributes)
+		;; first see if there's a handler for this tag
+		(find-tag-handler tag-name)
+		;; didn't find a handler for that tag or any of it's
+		;; attributes, must be a "regular" yaclml tag.
+		(handle-regular-tag tag-name attributes body)))
 	    (error "Badly formatted YACLML: ~S." form)))))
   
 (defun compile-tal-string-to-lambda (string &optional (expression-package *package*))

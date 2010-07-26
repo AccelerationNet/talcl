@@ -1,8 +1,9 @@
 ;;;; -*- lisp -*-
 
-(in-package :it.bese.yaclml)
+(in-package :ucw)
 
 ;;;; * TAL Template Environments
+(defvar *tal-truename*)
 
 (defmacro with-tal-compilation-unit (pathname &body body)
   (rebinding (pathname)

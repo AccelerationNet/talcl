@@ -1,6 +1,6 @@
 ;; -*- lisp -*-
 
-(in-package :it.bese.yaclml)
+(in-package :ucw)
 
 ;;;; * Compiling TAL from .tal files
 
