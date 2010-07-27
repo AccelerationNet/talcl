@@ -6,23 +6,24 @@
 
 (defclass tal-generator () ())
 
-(defgeneric preprocess-tal (generator name)
-  (:documentation "Returns the source code which a certain TAL
-  name will expand into. Used for debugging tal code."))
-
 (defgeneric load-tal (generator name))
 
 (defgeneric template-truename (generator name))
 
+
 (defclass file-system-generator (tal-generator)
   ((root-directories :initarg :root-directories :type list
-		     :accessor root-directories)
-   (cachep :initarg :cachep :accessor cachep :initform t)))
+		     :accessor root-directories)))
 
-(defstruct (tal-template (:conc-name tal-template.))
-  last-load-time
-  file-name
-  function)
+(defclass caching-file-system-generator (file-system-generator)
+  ((cache :accessor cache :initform (make-hash-table :test 'equal))))
+
+(defmethod shared-initialize :after ((fsg file-system-generator)
+				     slot-names
+				     &key cachep &allow-other-keys)
+  (when cachep
+    (setf (cache fsg) (make-hash-table :test 'equal))))
+
 
 (defparameter *tal-templates* (make-hash-table :test 'equal))
 
@@ -30,10 +31,11 @@
   (template-truename generator (pathname name)))
 
 (defmethod template-truename ((generator file-system-generator) (name pathname))
-  (dolist (root (root-directories generator))
-    (when-bind truename (probe-file (merge-pathnames name root))
-      (return-from template-truename truename)))
-  (return-from template-truename nil))
+  (aif (probe-file name)
+       it
+       (dolist (root (root-directories generator))
+	 (when-bind truename (probe-file (merge-pathnames name root))
+	   (return-from template-truename truename)))))
 
 (defmethod load-tal ((generator file-system-generator) (name string))
   (load-tal generator (pathname name)))
@@ -41,29 +43,51 @@
 (defmethod load-tal ((generator file-system-generator) (name pathname))
   (let ((file-name (template-truename generator name)))
     (assert file-name (name) "No template named ~S found." name)
-    (unless (gethash file-name *tal-templates*)
-      (setf (gethash file-name *tal-templates*)
-	    (make-tal-template :last-load-time 0
-			       :function nil
-			       :file-name file-name)))
-    (lambda (environment generator)
-      (let ((template (gethash file-name *tal-templates*))
-	    (file-write-date (file-write-date file-name)))
-	(when (or (not (cachep generator))
-		  (< (tal-template.last-load-time template) file-write-date))
-	  (setf
-	   (tal-template.function template)
-	   (compile nil (preprocess-tal generator file-name))
+    (compile-tal-file file-name)
+    ))
 
-	   (tal-template.last-load-time template) file-write-date))
+(defstruct (tal-template (:conc-name tal-template.))
+  last-load-time
+  file-name
+  function)
+
+(defun %get-tal-template-fn (file-name)
+  (let ((template (make-tal-template :last-load-time (file-write-date file-name)
+				     :function (compile-tal-file file-name)
+				     :file-name file-name)))
+    (lambda (environment generator)
+      (let* ((file-name (tal-template.file-name template))
+	     (file-write-date (file-write-date file-name)))
+	(when (< (tal-template.last-load-time template) file-write-date)
+	  (let ((fun (compile-tal-file file-name)))
+	    (setf (tal-template.function template) fun
+		  (tal-template.last-load-time template) file-write-date)))
+
 	(funcall (tal-template.function template) environment generator)))))
 
-(defmethod preprocess-tal ((generator file-system-generator) (file-name string))
-  (preprocess-tal generator (pathname file-name)))
+(defmethod load-tal ((generator caching-file-system-generator)
+		     name)
+  (when (null name)
+    (error "Can't load-tal for empty(NIL) name."))
+  
+  (let* ((hash-val (gethash name (cache generator)))
+	 (template
+	     (or hash-val
+		 (if (and (pathnamep name)
+			  (probe-file name))
+		     (%get-tal-template-fn name)
+		     (aif (template-truename generator
+					     name)
+			  (load-tal generator it)
+			  (error "Can't find template named ~s for generator ~a."
+				 name generator))))))
+    
+    (prog1 template
+      (unless (eql hash-val template)
+	(setf (gethash name (cache generator)) template)))))
 
-(defmethod preprocess-tal ((generator file-system-generator) (name pathname))
-  (with-tal-compilation-unit name
-    (compile-tal-string-to-lambda (read-tal-file-into-string name))))
+
+
 
 ;; Copyright (c) 2002-2005, Edward Marco Baringer
 ;; All rights reserved.
