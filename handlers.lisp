@@ -35,23 +35,28 @@
     (destructuring-bind (tag-name attributes &rest body) tag
       (declare (ignore body))
       (transform-lxml-form
-       `(,tag-name ,@attributes
+       `(,tag-name ,attributes
 		   (CONTENT-DUMMY ((tal::replace ,value)
 				   (tal::escape-html "nil"))
 				  "DUMMY"))))))
 
 (def-attribute-handler tal::replace (tag)
   (let ((value (read-tal-expression-from-string
-		(pull-attrib-val tag 'tal::replace)))
-        (escape (if-bind escape (pull-attrib-val tag 'tal::escape-html)
-		  ;; if they supplied a vlaue then use it (either nil
-		  ;; or t or whatever)
-                  (read-tal-expression-from-string escape)
-                  ;; no value supplied, default to T
-                  t)))
-    (if escape
-	`(cxml:text ,value)
-        `(cxml:unescaped ,value))))
+		(pull-attrib-val tag 'tal::replace))))
+    (when value
+      (let ((escape (if-bind escape (pull-attrib-val tag 'tal::escape-html)
+		      ;; if they supplied a vlaue then use it (either nil
+		      ;; or t or whatever)
+		      (read-tal-expression-from-string escape)
+		      ;; no value supplied, default to T
+		      t)))
+	(rebinding (value)
+	  `(etypecase ,value
+	     (list (eval ,value))
+	     (string ,(if escape
+			  `(cxml:text ,value)
+			  `(cxml:unescaped ,value)))
+	     ))))))
 
 (def-attribute-handler tal::when (tag)
   (let ((value (read-tal-expression-from-string
@@ -137,7 +142,7 @@
 				 ;; cxml code snippet, which may
 				 ;; result in some weird enviornment
 				 ;; collisions.
-				 `(quote ,@(mapcar #'transform-lxml-form body))
+				 `(quote (progn ,@(mapcar #'transform-lxml-form body)))
 				 )
 		  (warn "Ignoring body tag in TAL:INCLUDE: ~S." param-name)))))
 	;; 3) GO!

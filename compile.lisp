@@ -238,7 +238,7 @@
   returns the yaclml tag using code for generating the
   HTML. Destructivly modifies TREE."
   ;; we collect strings and forms it the collector OPS. When we're
-  ;; done iterating (or recusring) over the tags we can string-fold
+  ;; done iterating (or recursing) over the tags we can string-fold
   ;; ops to get the longest posible string sequences.
   (mapcar (lambda (form)
 	    (transform-lxml-form form))
@@ -254,7 +254,7 @@
 	     (for handler = (and key (gethash key *tal-attribute-handlers*)))
 	     (when handler
 	       (return-from transform-lxml-form
-		 (funcall (cdr handler) form))) ))
+		 (funcall handler form))) ))
 	 
 	 (find-tag-handler (tag-name)
 	   "Find the handler for the given tag. Tag must be an
@@ -330,10 +330,15 @@ interned symbol (see the interner) for this to work."
   (bind-tal-compile-environment ((generator (gensym)))
     (with-tal-compile-environment (generator)
       `(lambda (-tal-environment- ,generator)
-         (declare (ignorable -tal-environment- ,generator))
-         ,(let ((*package* (find-package :it.bese.yaclml.tags))
-                (*expression-package* expression-package))
-            (transform-lxml-form (it.bese.yaclml.xmls:parse string :uri-to-package *uri-to-package*)))))))
+         (declare (ignorable -tal-environment- ,generator)
+		  (optimize (debug 3)))
+         ,(let ((*package* (find-package :ucw))
+                (*expression-package* expression-package)
+		(parse-tree (cxml:parse string
+					(make-interner *uri-to-package*
+						       (cxml-xmls:make-xmls-builder
+							:include-namespace-uri t)))))
+            (transform-lxml-form parse-tree))))))
 
 (defun compile-tal-string (string &optional (expression-package (find-package :common-lisp-user)))
   (let ((*break-on-signals* t))

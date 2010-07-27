@@ -1,6 +1,6 @@
 (defun test-parse ()
   (let* ((it.bese.yaclml.xmls::*strip-comments* nil)
-	 (str (arnesi:read-string-from-file "/home/ACCELERATION/nathan/lisp/gainesville-green/templates/home-search.tal"))
+	 (str (arnesi:read-string-from-file "/home/ACCELERATION/nathan/lisp/gainesville-green/templates/faq.tal"))
 	 (form2 (cxml:parse str
 			    (make-interner *uri-to-package*
 					   (cxml:make-whitespace-normalizer
@@ -26,3 +26,9 @@
   (let ((lam (test-tran)))
     (funcall (eval lam) nil)))
 
+
+(defun test-tran2 ()
+  (let ((pathname "/home/ACCELERATION/nathan/lisp/gainesville-green/templates/faq.tal"))
+    (with-tal-compilation-unit pathname
+      (compile-tal-string-to-lambda
+       (read-tal-file-into-string pathname)))))

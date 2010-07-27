@@ -40,9 +40,7 @@
 
 (defmethod load-tal ((generator file-system-generator) (name pathname))
   (let ((file-name (template-truename generator name)))
-    (assert file-name
-	    (name)
-	    "No template named ~S found." name)
+    (assert file-name (name) "No template named ~S found." name)
     (unless (gethash file-name *tal-templates*)
       (setf (gethash file-name *tal-templates*)
 	    (make-tal-template :last-load-time 0
