@@ -123,9 +123,6 @@
 				       -tal-environment-)))
 	      (list ,@(transform-lxml-tree body))))))))
 
-(defpackage :it.bese.yaclml.tal.include-params
-  (:use))
-
 (def-tag-handler tal:include (tag)
   ;; <tal:include param:foo="foo" bar="$bar">
   ;;   <param:contents>
@@ -145,7 +142,7 @@
 	;; 1) grab all the attribute params
 	(loop
 	  for (param value) in attributes
-	  if (eql (find-package :it.bese.yaclml.tal.include-params)
+	  if (eql (find-package :tal.include-params)
 		  (symbol-package param))
 	    do (augmented-env `(quote ,(intern (string param) *expression-package*))
 			       (read-tal-expression-from-string value))
@@ -159,7 +156,7 @@
 	  (unless (stringp child)
 	    (destructuring-bind (param-name attributes &rest body) child
 	      (declare (ignore attributes))
-	      (if (eql (find-package :it.bese.yaclml.tal.include-params)
+	      (if (eql (find-package :tal.include-params)
 		       (symbol-package param-name))
 		  (augmented-env `(quote ,(intern (string param-name) *expression-package*))
 				 ;; this used to be evaluated into a string 

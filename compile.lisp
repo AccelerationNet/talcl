@@ -78,16 +78,9 @@
 (defparameter *uri-to-package*
   (list 
    (cons "http://common-lisp.net/project/bese/tal/core"
-         (find-package :it.bese.yaclml.tal))
+         (find-package :net.common-lisp.project.bese.tal.core))
    (cons "http://common-lisp.net/project/bese/tal/params"
-         (find-package :it.bese.yaclml.tal.include-params))
-;   (cons "http://common-lisp.net/project/bese/yaclml/core"
-;         (find-package :it.bese.yaclml.tags))
-;   (cons "http://www.w3.org/XML/1998/namespace"
-;         (find-package :it.bese.yaclml.xml))
-;   (cons "http://www.w3.org/1999/xlink/"
-;         (find-package :it.bese.yaclml.xlink)))
-   )
+         (find-package :net.common-lisp.project.bese.tal.include-params)))
   "Default mapping of xmlns to packages.")
 
 
@@ -95,6 +88,7 @@
   ((uri-to-package :initform nil :initarg :uri-to-package
 		   :accessor uri-to-package)
    (ns-test :initform #'string= :initarg :ns-test :accessor ns-test)))
+
 (defmethod sax:start-element ((handler interner)
 			      namespace-uri local-name qname attributes)
   (let ((uri-to-package (uri-to-package handler))
