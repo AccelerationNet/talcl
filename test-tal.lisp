@@ -1,3 +1,4 @@
+(in-package :ucw)
 (defun test-parse ()
   (let* ((it.bese.yaclml.xmls::*strip-comments* nil)
 	 (str (arnesi:read-string-from-file "/home/ACCELERATION/nathan/lisp/gainesville-green/templates/faq.tal"))
