@@ -144,9 +144,6 @@
 	   (lambda (,tag) ,@body))
      ',tag-name))
 
-(def-special-environment tal-compile-environment ()
-  generator)
-
 (defun |$ tal reader| (stream char)
   "The $ char reader for tal expressions."
   (declare (ignore char))
@@ -327,24 +324,24 @@ interned symbol (see the interner) for this to work."
   
 (defun compile-tal-string-to-lambda (string &optional (expression-package *package*))
   "Returns the source code for the tal function form the tal text STRING."
-  (bind-tal-compile-environment ((generator (gensym)))
-    (with-tal-compile-environment (generator)
-      `(lambda (-tal-environment- ,generator)
-         (declare (ignorable -tal-environment- ,generator)
-		  (optimize (debug 3)))
-         ,(let ((*package* (find-package :ucw))
-                (*expression-package* expression-package)
-		(parse-tree (cxml:parse string
-					(make-interner *uri-to-package*
-						       (cxml-xmls:make-xmls-builder
-							:include-namespace-uri t)))))
-            (transform-lxml-form parse-tree))))))
+  `(lambda (-tal-environment-)
+     (declare (ignorable -tal-environment-)
+	      (optimize (debug 3)))
+     ,(let ((*package* (find-package :ucw))
+	    (*expression-package* expression-package)
+	    (parse-tree (cxml:parse string
+				    (make-interner *uri-to-package*
+						   (cxml-xmls:make-xmls-builder
+						    :include-namespace-uri t)))))
+	(transform-lxml-form parse-tree))))
 
-(defun compile-tal-string (string &optional (expression-package (find-package :common-lisp-user)))
+(defun compile-tal-string (string &optional
+			   (expression-package (find-package :common-lisp-user)))
   (let ((*break-on-signals* t))
     (compile nil (compile-tal-string-to-lambda string expression-package))))
 
-(defun compile-tal-file (pathname &optional (expression-package (find-package :common-lisp-user)))
+(defun compile-tal-file (pathname &optional
+			 (expression-package (find-package :common-lisp-user)))
   (with-tal-compilation-unit pathname
     (compile-tal-string (read-tal-file-into-string pathname) expression-package)))
 

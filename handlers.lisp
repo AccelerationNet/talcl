@@ -79,6 +79,7 @@
          (let ((-tal-environment- (extend-environment ,loop-item-sym -tal-environment-)))
            ,(transform-lxml-form tag))))))
 
+
 (def-attribute-handler tal::let (tag)
   "Extend environment with a given list of bindings, as for LET form."
   (let ((bindings
@@ -175,7 +176,7 @@
 	;; 3) GO!
 	;; TODO: Figure out the generator logic and make sure this still works.
 	(with-tal-compile-environment (generator)
-	  `(funcall (load-tal ,generator
+	  `(funcall (load-tal ,*tal-generator*
 			      ,(if (constantp template-name)
 				   (merge-pathnames template-name *tal-truename*)
 				   `(let ((tal-truename ,*tal-truename*))

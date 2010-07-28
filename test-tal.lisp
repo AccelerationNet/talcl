@@ -13,17 +13,21 @@
   (let* ((form (test-parse))
 	 (*expression-package* *package*)
 	 (translated (transform-lxml-form form))
-	 (lam `(lambda (-tal-environment-)
+	 (lam
+	  (bind-tal-compile-environment ((generator (gensym)))
+	    (with-tal-compile-environment (generator)
+	      `(lambda (-tal-environment- ,generator)
+	 
 		 (declare (optimize (debug 3)))
 		 (cxml:with-xml-output
 		     (cxml:make-character-stream-sink *standard-output*
 						      :indentation 2
 						      :canonical nil)
 		   ,translated)
-		 nil)))
+		 nil)))))
     lam))
 
-(defun test-eval ()
+(Defun test-eval ()
   (let ((lam (test-tran)))
     (funcall (eval lam) nil)))
 

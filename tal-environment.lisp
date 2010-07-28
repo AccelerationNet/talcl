@@ -3,7 +3,10 @@
 (in-package :ucw)
 
 ;;;; * TAL Template Environments
-(defvar *tal-truename*)
+(defvar *tal-truename* nil
+  "The truename of the tal file being compiled.")
+(defvar *tal-generator* nil
+  "The generator to be used during compilation.")
 
 (defmacro with-tal-compilation-unit (pathname &body body)
   (rebinding (pathname)

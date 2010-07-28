@@ -13,17 +13,16 @@
 
 (defclass file-system-generator (tal-generator)
   ((root-directories :initarg :root-directories :type list
-		     :accessor root-directories)))
+		     :accessor root-directories)
+   (boundedp :initarg :boundedp :initform t
+	     :accessor boundedp
+	     :documentation "When non-nil(default) the generator
+	     enforces that any referenced template is in one the root
+	     directories, or one of their subdirectories. This blocks
+	     people from referncing templates like '/etc/passwd'")))
 
 (defclass caching-file-system-generator (file-system-generator)
   ((cache :accessor cache :initform (make-hash-table :test 'equal))))
-
-(defmethod shared-initialize :after ((fsg file-system-generator)
-				     slot-names
-				     &key cachep &allow-other-keys)
-  (when cachep
-    (setf (cache fsg) (make-hash-table :test 'equal))))
-
 
 (defparameter *tal-templates* (make-hash-table :test 'equal))
 
@@ -35,28 +34,32 @@
 
 (defmethod load-tal ((generator file-system-generator) (name pathname))
   (let ((file-name (template-truename generator name)))
-    (assert file-name (name) "No template named ~S found." name)
-    (compile-tal-file file-name)
-    ))
+    (assert file-name (name)
+	    "No template named ~S found with generator ~a."
+	    name generator)
+    (let ((*tal-generator* generator))
+      (compile-tal-file file-name))))
 
 (defstruct (tal-template (:conc-name tal-template.))
   last-load-time
   file-name
   function)
 
-(defun %get-tal-template-fn (file-name)
+(defun %get-tal-template-fn (file-name generator)
   (let ((template (make-tal-template :last-load-time (file-write-date file-name)
-				     :function (compile-tal-file file-name)
+				     :function (let ((*tal-generator* generator))
+						 (compile-tal-file file-name))
 				     :file-name file-name)))
-    (lambda (environment generator)
+    (lambda (environment)
       (let* ((file-name (tal-template.file-name template))
 	     (file-write-date (file-write-date file-name)))
 	(when (< (tal-template.last-load-time template) file-write-date)
-	  (let ((fun (compile-tal-file file-name)))
+	  (let ((fun (let ((*tal-generator* generator))
+		       (compile-tal-file file-name))))
 	    (setf (tal-template.function template) fun
 		  (tal-template.last-load-time template) file-write-date)))
 
-	(funcall (tal-template.function template) environment generator)))))
+	(funcall (tal-template.function template) environment)))))
 
 (defmethod load-tal ((generator caching-file-system-generator)
 		     name)
@@ -68,7 +71,7 @@
 	     (or hash-val
 		 (if (and (pathnamep name)
 			  (probe-file name))
-		     (%get-tal-template-fn name)
+		     (%get-tal-template-fn name generator)
 		     (aif (template-truename generator name)
 			  (load-tal generator it)
 			  (error "Can't find template named ~s for generator ~a."
