@@ -331,8 +331,9 @@ interned symbol (see the interner) for this to work."
 
 (defun compile-tal-string (string &optional
 			   (expression-package (find-package :common-lisp-user)))
-  (let ((*break-on-signals* t))
-    (compile nil (compile-tal-string-to-lambda string expression-package))))
+  (let* ((*break-on-signals* t)
+	 (lamb (compile-tal-string-to-lambda string expression-package)))
+    (compile nil lamb)))
 
 (defun compile-tal-file (pathname &optional
 			 (expression-package (find-package :common-lisp-user)))

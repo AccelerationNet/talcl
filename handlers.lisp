@@ -172,14 +172,12 @@
 		  (warn "Ignoring body tag in TAL:INCLUDE: ~S." param-name)))))
 	;; 3) GO!
 	;; TODO: Figure out the generator logic and make sure this still works.
-	(with-tal-compile-environment (generator)
-	  `(funcall (load-tal ,*tal-generator*
-			      ,(if (constantp template-name)
-				   (merge-pathnames template-name *tal-truename*)
-				   `(let ((tal-truename ,*tal-truename*))
-				      (merge-pathnames ,template-name tal-truename))))
-		    (extend-environment (tal-env ,@(augmented-env)) -tal-environment-)
-		    ,generator))))))
+	`(funcall (load-tal ,*tal-generator*
+			    ,(if (constantp template-name)
+				 (merge-pathnames template-name *tal-truename*)
+				 `(let ((tal-truename ,*tal-truename*))
+				    (merge-pathnames ,template-name tal-truename))))
+		  (extend-environment (tal-env ,@(augmented-env)) -tal-environment-))))))
 
 
 (def-attribute-handler tal::in-package (tag)

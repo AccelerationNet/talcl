@@ -13,13 +13,7 @@
 
 (defclass file-system-generator (tal-generator)
   ((root-directories :initarg :root-directories :type list
-		     :accessor root-directories)
-   (boundedp :initarg :boundedp :initform t
-	     :accessor boundedp
-	     :documentation "When non-nil(default) the generator
-	     enforces that any referenced template is in one the root
-	     directories, or one of their subdirectories. This blocks
-	     people from referncing templates like '/etc/passwd'")))
+		     :accessor root-directories)))
 
 (defclass caching-file-system-generator (file-system-generator)
   ((cache :accessor cache :initform (make-hash-table :test 'equal))))
