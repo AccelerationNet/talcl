@@ -27,15 +27,8 @@
 
 (defparameter *tal-templates* (make-hash-table :test 'equal))
 
-(defmethod template-truename ((generator file-system-generator) (name string))
-  (template-truename generator (pathname name)))
-
-(defmethod template-truename ((generator file-system-generator) (name pathname))
-  (aif (probe-file name)
-       it
-       (dolist (root (root-directories generator))
-	 (when-bind truename (probe-file (merge-pathnames name root))
-	   (return-from template-truename truename)))))
+(defmethod template-truename ((generator file-system-generator) name)
+  (find-file-in-directories name (root-directories generator)))
 
 (defmethod load-tal ((generator file-system-generator) (name string))
   (load-tal generator (pathname name)))
