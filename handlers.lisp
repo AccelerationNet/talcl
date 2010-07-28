@@ -90,6 +90,34 @@
 (def-tag-handler tal::lisp (tag)
   (read-tal-expression-from-string (first (cdr tag))))
 
+(def-tag-handler tal::loop (tag)
+  "On each iteration the environment is extended with the value in
+  the value passed to DOLIST.
+
+<div class='map-control check-list efficiency' >
+	<span class='text'>By Efficiency</span>
+        <tal:loop tal:var='class' tal:list='$efficiencies'>
+	  <label class='map-control-item'>
+	    <img class='marker-icon $class' />
+	    <span class='text'>$class</span>
+	    <input type='checkbox' name='filter-efficiency' item-type='$class' />
+	  </label>
+        </tal:loop>
+      </div>
+"
+  (let ((name (intern (string-upcase
+		       (pull-attrib-val! tag 'tal::var))
+		      *expression-package*))
+	(value (read-tal-expression-from-string
+		(pull-attrib-val! tag 'tal::list))))
+    (with-unique-names (loop-item-sym)
+      `(loop for ,loop-item-sym in ,value
+	     collect
+	  (let ((-tal-environment-
+		 (extend-environment (tal-env ',name ,loop-item-sym)
+				     -tal-environment-)))
+	    ,(transform-lxml-form tag))))))
+
 (defpackage :it.bese.yaclml.tal.include-params
   (:use))
 
