@@ -110,13 +110,15 @@
 		      *expression-package*))
 	(value (read-tal-expression-from-string
 		(pull-attrib-val! tag 'tal::list))))
-    (with-unique-names (loop-item-sym)
-      `(loop for ,loop-item-sym in ,value
-	     collect
-	  (let ((-tal-environment-
-		 (extend-environment (tal-env ',name ,loop-item-sym)
-				     -tal-environment-)))
-	    ,(transform-lxml-form tag))))))
+    (destructuring-bind (tag-name attributes &rest body) tag
+      (declare (ignore tag-name attributes))
+      (with-unique-names (loop-item-sym)
+	`(loop for ,loop-item-sym in ,value
+	       append
+	    (let ((-tal-environment-
+		   (extend-environment (tal-env ',name ,loop-item-sym)
+				       -tal-environment-)))
+	      (list ,@(transform-lxml-tree body))))))))
 
 (defpackage :it.bese.yaclml.tal.include-params
   (:use))
