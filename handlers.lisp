@@ -4,7 +4,7 @@
 
 ;;;; * Standard TAL handlers
 
-(defun pull-attrib-val (tag key)
+(defun pull-attrib-val! (tag key)
   (when-bind attr (find key (second tag) :key #'car)
     (setf (second tag) (remove attr (second tag)))
     (second attr)))
@@ -15,8 +15,8 @@
 
 (def-attribute-handler tal::content (tag)
   "Becomes a TAL:REPLACE."
-  (let ((value (pull-attrib-val tag 'tal::content))
-        (escape-html (pull-attrib-val tag 'tal::escape-html)))
+  (let ((value (pull-attrib-val! tag 'tal::content))
+        (escape-html (pull-attrib-val! tag 'tal::escape-html)))
     (destructuring-bind (tag-name attributes &rest body) tag
       (declare (ignore body))
       (transform-lxml-form
@@ -28,7 +28,7 @@
 
 (def-attribute-handler tal::content-as-is (tag)
   "Becomes a TAL:REPLACE."
-  (let ((value (pull-attrib-val tag 'tal::content-as-is)))
+  (let ((value (pull-attrib-val! tag 'tal::content-as-is)))
     (destructuring-bind (tag-name attributes &rest body) tag
       (declare (ignore body))
       (transform-lxml-form
@@ -39,9 +39,9 @@
 
 (def-attribute-handler tal::replace (tag)
   (let ((value (read-tal-expression-from-string
-		(pull-attrib-val tag 'tal::replace))))
+		(pull-attrib-val! tag 'tal::replace))))
     (when value
-      (let ((escape (if-bind escape (pull-attrib-val tag 'tal::escape-html)
+      (let ((escape (if-bind escape (pull-attrib-val! tag 'tal::escape-html)
 		      ;; if they supplied a vlaue then use it (either nil
 		      ;; or t or whatever)
 		      (read-tal-expression-from-string escape)
@@ -57,13 +57,13 @@
 
 (def-attribute-handler tal::when (tag)
   (let ((value (read-tal-expression-from-string
-		(pull-attrib-val tag 'tal::when))))
+		(pull-attrib-val! tag 'tal::when))))
     `(when ,value
        ,(transform-lxml-form tag))))
 
 (def-attribute-handler tal::unless (tag)
   (let ((value (read-tal-expression-from-string
-		(pull-attrib-val tag 'tal::unless))))
+		(pull-attrib-val! tag 'tal::unless))))
     `(unless ,value
        ,(transform-lxml-form tag))))
 
@@ -71,7 +71,7 @@
   "On each iteration the environment is extended with the value in
   the value passed to DOLIST."
   (let ((value (read-tal-expression-from-string
-		(pull-attrib-val tag 'tal::dolist))))
+		(pull-attrib-val! tag 'tal::dolist))))
     (with-unique-names (loop-item-sym)
       `(dolist (,loop-item-sym ,value)
          (let ((-tal-environment- (extend-environment ,loop-item-sym -tal-environment-)))
@@ -82,7 +82,7 @@
   (let ((bindings
          (loop
             for (name value) in (read-tal-expression-from-string
-				 (pull-attrib-val tag 'tal::let))
+				 (pull-attrib-val! tag 'tal::let))
             collect `(cons ',name ,value))))
     `(let ((-tal-environment- (extend-environment (list (list ,@bindings)) -tal-environment-)))
        ,(transform-lxml-form tag))))
@@ -101,8 +101,8 @@
   ;; </tal>
   (let ((template-name
 	 (or
-	  (pull-attrib-val tag 'tal::name)
-	  (awhen (pull-attrib-val tag 'tal::name-expression)
+	  (pull-attrib-val! tag 'tal::name)
+	  (awhen (pull-attrib-val! tag 'tal::name-expression)
 	    (parse-tal-attribute-value it))
 	  (error "Missing TAL:NAME and TAL:NAME-EXPRESSION tags."))))
 
@@ -153,7 +153,7 @@
 
 
 (def-attribute-handler tal::in-package (tag)
-  (let ((pkg-string (pull-attrib-val tag 'tal::in-package)))
+  (let ((pkg-string (pull-attrib-val! tag 'tal::in-package)))
     (let ((*expression-package*
 	   (or (find-package (read-from-string pkg-string))
 	       (error "No package named ~S found." (read-from-string pkg-string)))))
