@@ -38,8 +38,10 @@
 				  "DUMMY"))))))
 
 (def-attribute-handler tal::replace (tag)
-  (let ((value (read-tal-expression-from-string
-		(pull-attrib-val! tag 'tal::replace))))
+  (let* ((v (pull-attrib-val! tag 'tal::replace))
+	 (value (typecase v
+		  (list v)
+		  (string (read-tal-expression-from-string v)))))
     (when value
       (let ((escape (if-bind escape (pull-attrib-val! tag 'tal::escape-html)
 		      ;; if they supplied a vlaue then use it (either nil
@@ -47,7 +49,7 @@
 		      (read-tal-expression-from-string escape)
 		      ;; no value supplied, default to T
 		      t)))
-	(rebinding (value)
+	(rebinding (value)  
 	  `(etypecase ,value
 	     (list (eval ,value))
 	     (string ,(if escape
