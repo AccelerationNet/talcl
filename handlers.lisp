@@ -5,12 +5,9 @@
 ;;;; * Standard TAL handlers
 
 (defun pull-attrib-val (tag key)
-  (let ((attr (find key (second tag)
-		    :key #'car)))
-    (when attr
-      (setf (second tag)
-	    (remove attr (second tag)))
-      (second attr))))
+  (when-bind attr (find key (second tag) :key #'car)
+    (setf (second tag) (remove attr (second tag)))
+    (second attr)))
 
 
 (def-tag-handler tal::tal (tag)
@@ -97,22 +94,20 @@
   (:use))
 
 (def-tag-handler tal:include (tag)
-;; <tal:include param:foo="foo" bar="$bar">
-;;   <param:contents>
-;;     <div tal:when="$flag">asdfjkl</div>
-;;   </param:contents>
-;; </tal>
-  
-  (destructuring-bind (name attributes &rest body) tag
-    (declare (ignore name))
-    (let (template-name)
-      (or
-       (awhen (pull-attrib-val tag 'tal::name)
-	 (setf template-name it))
-       (awhen (pull-attrib-val tag 'tal::name-expression)
-	 (setf template-name (parse-tal-attribute-value it)))
-       (error "Missing TAL:NAME and TAL:NAME-EXPRESSION tags."))
-    
+  ;; <tal:include param:foo="foo" bar="$bar">
+  ;;   <param:contents>
+  ;;     <div tal:when="$flag">asdfjkl</div>
+  ;;   </param:contents>
+  ;; </tal>
+  (let ((template-name
+	 (or
+	  (pull-attrib-val tag 'tal::name)
+	  (awhen (pull-attrib-val tag 'tal::name-expression)
+	    (parse-tal-attribute-value it))
+	  (error "Missing TAL:NAME and TAL:NAME-EXPRESSION tags."))))
+
+    (destructuring-bind (name attributes &rest body) tag
+      (declare (ignore name))
       (with-collector (augmented-env)
 	;; 1) grab all the attribute params
 	(loop

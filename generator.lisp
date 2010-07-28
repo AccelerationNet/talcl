@@ -76,8 +76,7 @@
 		 (if (and (pathnamep name)
 			  (probe-file name))
 		     (%get-tal-template-fn name)
-		     (aif (template-truename generator
-					     name)
+		     (aif (template-truename generator name)
 			  (load-tal generator it)
 			  (error "Can't find template named ~s for generator ~a."
 				 name generator))))))
