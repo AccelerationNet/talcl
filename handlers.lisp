@@ -97,7 +97,7 @@
   "On each iteration the environment is extended with the value in
   the value passed to DOLIST.
 
-<div class='map-control check-list efficiency' >
+      <div class='map-control check-list efficiency' >
 	<span class='text'>By Efficiency</span>
         <tal:loop tal:var='class' tal:list='$efficiencies'>
 	  <label class='map-control-item'>
@@ -108,18 +108,24 @@
         </tal:loop>
       </div>
 "
-  (let ((name (intern (string-upcase
+  (let* ((name (intern (string-upcase
 		       (pull-attrib-val! tag 'tal::var))
 		      *expression-package*))
+	 (idx-string (pull-attrib-val! tag 'tal::idx))
+	 (idx (when idx-string
+		(intern (string-upcase idx-string) *expression-package*)))
 	(value (read-tal-expression-from-string
 		(pull-attrib-val! tag 'tal::list))))
     (destructuring-bind (tag-name attributes &rest body) tag
       (declare (ignore tag-name attributes))
-      (with-unique-names (loop-item-sym)
+      (with-unique-names (loop-item-sym loop-item-idx)
 	`(loop for ,loop-item-sym in ,value
+	       for ,loop-item-idx upfrom 0
 	       append
 	    (let ((-tal-environment-
-		   (extend-environment (tal-env ',name ,loop-item-sym)
+		   (extend-environment (tal-env ',name ,loop-item-sym
+					      ,@(when idx
+						  `(',idx ,loop-item-idx)))
 				       -tal-environment-)))
 	      (list ,@(transform-lxml-tree body))))))))
 
