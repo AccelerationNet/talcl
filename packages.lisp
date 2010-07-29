@@ -2,7 +2,8 @@
 ;;;; see ucw:*uri-to-package*
 
 (eval-when (:load-toplevel :execute :compile-toplevel)
-  (delete-package :tal))
+  (when (find-package :it.bese.yaclml.tal)
+    (delete-package :it.bese.yaclml.tal)))
 
 (defpackage :net.common-lisp.project.bese.tal.core
   (:use)
