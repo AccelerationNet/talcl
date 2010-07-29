@@ -1,6 +1,9 @@
 ;;;; this file is for packages used by the tal system
 ;;;; see ucw:*uri-to-package*
 
+(eval-when (:load-toplevel :execute :compile-toplevel)
+  (delete-package :tal))
+
 (defpackage :net.common-lisp.project.bese.tal.core
   (:use)
   (:documentation "An HTML template authoring library.")
