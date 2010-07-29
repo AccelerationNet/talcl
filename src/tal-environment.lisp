@@ -14,7 +14,12 @@
       ,@body)))
 
 (defun read-tal-file-into-string (pathname)
-  (read-string-from-file pathname :external-format :utf-8))
+  (or
+   (ignore-errors (read-string-from-file pathname :external-format :utf-8))
+   (ignore-errors (read-string-from-file pathname :external-format :latin-1))
+   (ignore-errors (read-string-from-file pathname :external-format :ascii))
+   (error "Failed to load template content in utf-8, latin-1 or ascii ~a" pathname)))
+
 
 ;;;; TAL environments are simply lists of binding-sets, a binding set
 ;;;; can be either a hash table, an object or an alist.
