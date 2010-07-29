@@ -1,6 +1,6 @@
 ;;;; -*- lisp -*-
 
-(in-package :ucw)
+(in-package :talcl)
 
 ;;;; * TAL - Dynamic HTML Templating
 

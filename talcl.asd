@@ -11,5 +11,4 @@
 			 (:file "handlers" :depends-on ("packages" "compile")
 				:depends-on ("packages" "compile")))
 	    ))
-  :properties ((version "0.5"))
   :depends-on (:buildnode :cxml :iterate :arnesi :adwcodebase))

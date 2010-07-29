@@ -1,6 +1,6 @@
 ;; -*- lisp -*-
 
-(in-package :ucw)
+(in-package :talcl)
 
 ;;;; * Compiling TAL from .tal files
 
@@ -21,7 +21,8 @@
 (defparameter *tal-templates* (make-hash-table :test 'equal))
 
 (defmethod template-truename ((generator file-system-generator) name)
-  (find-file-in-directories name (root-directories generator)))
+  (net.acceleration.utils:find-file-in-directories
+   name (root-directories generator)))
 
 (defmethod load-tal ((generator file-system-generator) (name string))
   (load-tal generator (pathname name)))
