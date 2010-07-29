@@ -22,11 +22,11 @@
 ;;;; * Compiling TAL Templates
 
 ;;;; Given a TAL template (either an in-memory string or a file) We
-;;;; can compile this text into a function which, when called, prints
-;;;; the corresponding HTML on *yaclml-stream*. The compiled function
-;;;; requires two arguments: an environment mapping names (symbols) to
-;;;; lisp objects and a generator which is used for finding other
-;;;; templates to include.
+;;;; can compile this text into a function which, when called
+;;;; generates cxml sax events and should probably be done in the
+;;;; context of cxml:with-xml-output. The compiled function requires
+;;;; one argument: an environment mapping names (symbols) to lisp
+;;;; objects. see tal-env
 
 ;;;; * The TAL Expression language
 
@@ -59,14 +59,10 @@
 
 ;;;; TAL templates are xml and use xml's namespace mechanism for
 ;;;; defining the mapping from names to attribute and tag handlers.
-;;;; Templates are always compiled with the default namespace bound to
-;;;; the package :it.bese.yaclml.tags, this allows all the standard
-;;;; HTML tags to be used without problems. The namespace identifier
+;;;; The namespace identifier
 ;;;; http://common-lisp.net/project/bese/tal/core can be used to
-;;;; specify the :it.bese.yaclml.tal package which contains all the
-;;;; standard TAL tags and attributes. If it is necessary the
-;;;; :it.bese.yaclml.tags namespace can be accessed via
-;;;; "http://common-lisp.net/project/bese/yaclml/core". Parameters
+;;;; specify the :net.common-lisp.project.bese.tal.core package which
+;;;; contains all the standard TAL tags and attributes.  Parameters
 ;;;; passed to included templates need to use the
 ;;;; "http://common-lisp.net/project/bese/tal/params" name space.
 
