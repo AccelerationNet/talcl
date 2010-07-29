@@ -19,6 +19,7 @@
    #:transform-lxml-form
    #:transform-lxml-tree
    #:pull-attrib-val!
+   #:tal-env
    ))
 
 (eval-when (:load-toplevel :execute :compile-toplevel)

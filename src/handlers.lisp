@@ -3,6 +3,8 @@
 (in-package :talcl)
 
 ;;;; * Standard TAL handlers
+(defun intern-tal-string (s)
+  (intern (string-upcase s) *expression-package*))
 
 (defun pull-attrib-val! (tag key)
   (when-bind attr (find key (second tag) :key #'car)
@@ -108,18 +110,27 @@
         </tal:loop>
       </div>
 "
-  (let* ((name (intern (string-upcase
-		       (pull-attrib-val! tag 'tal::var))
-		      *expression-package*))
+  (let* ((name (intern-tal-string (pull-attrib-val! tag 'tal::var)))
 	 (idx-string (pull-attrib-val! tag 'tal::idx))
 	 (idx (when idx-string
 		(intern (string-upcase idx-string) *expression-package*)))
-	(value (read-tal-expression-from-string
-		(pull-attrib-val! tag 'tal::list))))
+	 (value-string (pull-attrib-val! tag 'tal::list))
+	 (value (when value-string
+		  (read-tal-expression-from-string value-string)))
+	 (constant-list-string (pull-attrib-val! tag 'tal::constant-list))
+	 (constant-list (when constant-list-string
+			  (list* 'cl:list
+			   (remove-if
+			    (lambda (x) (or (null x) (zerop (length x))))
+			    (cl-ppcre::split "\\s*,\\s*" constant-list-string))))))
+    (when (and (null value)
+	       (null constant-list))
+      (tal-error "A tal:loop tag, must have a list to loop over
+        (either tal:list, or tal:constant-list)"))
     (destructuring-bind (tag-name attributes &rest body) tag
       (declare (ignore tag-name attributes))
       (with-unique-names (loop-item-sym loop-item-idx)
-	`(loop for ,loop-item-sym in ,value
+	`(loop for ,loop-item-sym in ,(or value constant-list)
 	       for ,loop-item-idx upfrom 0
 	       append
 	    (let ((-tal-environment-
@@ -140,7 +151,7 @@
 	  (pull-attrib-val! tag 'tal::name)
 	  (awhen (pull-attrib-val! tag 'tal::name-expression)
 	    (parse-tal-attribute-value it))
-	  (error "Missing TAL:NAME and TAL:NAME-EXPRESSION tags."))))
+	  (tal-error "Missing TAL:NAME and TAL:NAME-EXPRESSION tags."))))
 
     (destructuring-bind (name attributes &rest body) tag
       (declare (ignore name))
@@ -153,7 +164,7 @@
 	    do (augmented-env `(quote ,(intern (string param) *expression-package*))
 			       (read-tal-expression-from-string value))
 	  else
-	    do (warn "Ignoring attribute in TAL:INCLUDE: ~S (~S)."
+	    do (tal-warn "Ignoring attribute in TAL:INCLUDE: ~S (~S)."
 		     param (symbol-package param)))
 	
 	;; 2) grab all the body params
@@ -175,7 +186,7 @@
 				 ;; collisions.
 				 `(quote (progn ,@(mapcar #'transform-lxml-form body)))
 				 )
-		  (warn "Ignoring body tag in TAL:INCLUDE: ~S." param-name)))))
+		  (tal-warn "Ignoring body tag in TAL:INCLUDE: ~S." param-name)))))
 	;; 3) GO!
 	;; TODO: Figure out the generator logic and make sure this still works.
 	`(funcall (load-tal ,*tal-generator*
@@ -190,7 +201,7 @@
   (let ((pkg-string (pull-attrib-val! tag 'tal::in-package)))
     (let ((*expression-package*
 	   (or (find-package (read-from-string pkg-string))
-	       (error "No package named ~S found." (read-from-string pkg-string)))))
+	       (tal-error "No package named ~S found." (read-from-string pkg-string)))))
       (transform-lxml-form tag))))
 
 ;; Copyright (c) 2002-2005, Edward Marco Baringer

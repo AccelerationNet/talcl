@@ -336,6 +336,28 @@ interned symbol (see the interner) for this to work."
   (with-tal-compilation-unit pathname
     (compile-tal-string (read-tal-file-into-string pathname) expression-package)))
 
+(define-condition tal-compilation-condition (simple-condition)
+  ((format-control :accessor format-control :initarg :format-control :initform nil)
+   (format-args :accessor format-args :initarg :format-args :initform nil))
+  (:report (lambda (c s)
+	     (apply #'format
+	      s
+	      (format-control c)
+	      (format-args c)))))
+
+(define-condition tal-compilation-warning (tal-compilation-condition warning) ())
+
+(defun tal-warn (message &rest args)
+  (warn (make-condition 'tal-compilation-warning
+			:format-control message
+			:format-args args)))
+
+(define-condition tal-compilation-error (tal-compilation-condition error) ())
+(defun tal-error (message &rest args)
+  (error (make-condition 'tal-compilation-error
+			 :format-control message
+			 :format-args args)))
+
 ;; Copyright (c) 2002-2005, Edward Marco Baringer
 ;; All rights reserved. 
 ;; 
