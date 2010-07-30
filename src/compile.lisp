@@ -66,9 +66,9 @@
 ;;;; passed to included templates need to use the
 ;;;; "http://common-lisp.net/project/bese/tal/params" name space.
 
-(defvar *tal-attribute-handlers* (make-hash-table))
+(defvar *tal-attribute-handlers* ())
 
-(defvar *tal-tag-handlers* (make-hash-table))
+(defvar *tal-tag-handlers* ())
 
 ;;;; Interning namespaced elements to packages
 (defparameter *uri-to-package*
@@ -115,24 +115,22 @@
 
 
 
-(defvar *expression-package* nil
+(defvar *expression-package* (find-package :common-lisp-user)
   "The value of *PACKAGE* when tal attribute expressions and for
   looking up symbols in the environment.")
 
 ;; TODO these are kludgy for C-c C-c, they push every time. probably a hashtable would do better...
 (defmacro def-attribute-handler (attribute (tag) &body body)
   "Defines a new attribute handler name ATTRIBUTE."
-  `(progn
-     (setf (gethash ',attribute *tal-attribute-handlers*)
-	   (lambda (,tag) ,@body))
-     ',attribute))
+  `(progn (defun ,attribute (,tag)
+	    ,@body)
+	  (pushnew ',attribute *tal-attribute-handlers*)))
 
 (defmacro def-tag-handler (tag-name (tag) &body body)
   "Defines a new tag handlec named TAG-NAME."
-  `(progn
-     (setf (gethash ',tag-name *tal-tag-handlers*)
-	   (lambda (,tag) ,@body))
-     ',tag-name))
+  `(progn (defun ,tag-name (,tag)
+	    ,@body)
+	  (pushnew ',tag-name *tal-tag-handlers*)))
 
 (defun |$ tal reader| (stream char)
   "The $ char reader for tal expressions."
@@ -234,61 +232,57 @@
 (defun transform-lxml-form (form)
   "Transforms the lxml tree FORM into common lisp code (a series
   of calls to tag macros)."
-  (flet ((find-attribute-handlers (attributes)
-	   (iterate
-	     (for attr in attributes)
-	     (for key = (first attr))
-	     (for handler = (and key (gethash key *tal-attribute-handlers*)))
-	     (when handler
-	       (return-from transform-lxml-form
-		 (funcall handler form))) ))
-	 
-	 (find-tag-handler (tag-name)
-	   "Find the handler for the given tag. Tag must be an
-interned symbol (see the interner) for this to work."
-	   (awhen (gethash tag-name *tal-tag-handlers*)
-	     (return-from transform-lxml-form
-	       (funcall it form))))
-	 (handle-regular-tag (tag-name attributes body)
-	   (unless (member tag-name '(:comment :xml))
-	     (let* ((namespaces nil)
-		    (buildnode:*namespace-prefix-map*
-		     buildnode:*namespace-prefix-map*)
-		    (attrib-forms
-		     (flet ((add-ns (prefix ns)
-			      (push (list prefix ns) namespaces)
-			      (push (cons ns prefix)
-				    buildnode:*namespace-prefix-map*)
-			      nil))
-		       (loop
-			 for (key pre-value) in attributes
-			 for value = (if (stringp pre-value)
-					 (parse-tal-attribute-value pre-value)
-					 pre-value)
-			 append (if (consp key)
-				    (destructuring-bind (lname . ns) key
-				      ;; is it an xmlns attrb?
-				      (if (string= ns
-						   "http://www.w3.org/2000/xmlns/")
-					  (add-ns lname value)
-					  `((cxml:attribute*
-					     ,(buildnode::get-prefix ns)
-					     ,lname
-					     ,value))))
-				    `((cxml:attribute* nil ,key ,value))))))
-		    (element-form `(cxml:with-element*
-				       (,(and (consp tag-name)
-					      (buildnode::get-prefix
-					       (cdr tag-name)))
-					 ,(if (consp tag-name)
-					      (car tag-name)
-					      tag-name))
-				     ,@attrib-forms
-				     ,@(transform-lxml-tree body))))
-	       (dolist (p namespaces)
-		 (setf element-form `(cxml:with-namespace ,p
-				       ,element-form)))
-	       element-form))))
+  (labels
+      ((find-handler-named (name)
+	 (awhen (and (symbolp name)
+		     (fboundp name) )
+	   (return-from transform-lxml-form
+	     (funcall (symbol-function name) form))))
+
+       (find-attribute-handlers (attributes)
+	 (dolist (attr attributes)
+	   (find-handler-named (first attr))))
+
+       (handle-regular-tag (tag-name attributes body)
+	 (unless (member tag-name '(:comment :xml))
+	   (let* ((namespaces nil)
+		  (buildnode:*namespace-prefix-map*
+		   buildnode:*namespace-prefix-map*)
+		  (attrib-forms
+		   (flet ((add-ns (prefix ns)
+			    (push (list prefix ns) namespaces)
+			    (push (cons ns prefix)
+				  buildnode:*namespace-prefix-map*)
+			    nil))
+		     (loop
+		       for (key pre-value) in attributes
+		       for value = (if (stringp pre-value)
+				       (parse-tal-attribute-value pre-value)
+				       pre-value)
+		       append (if (consp key)
+				  (destructuring-bind (lname . ns) key
+				    ;; is it an xmlns attrb?
+				    (if (string= ns
+						 "http://www.w3.org/2000/xmlns/")
+					(add-ns lname value)
+					`((cxml:attribute*
+					   ,(buildnode::get-prefix ns)
+					   ,lname
+					   ,value))))
+				  `((cxml:attribute* nil ,key ,value))))))
+		  (element-form `(cxml:with-element*
+				     (,(and (consp tag-name)
+					    (buildnode::get-prefix
+					     (cdr tag-name)))
+				       ,(if (consp tag-name)
+					    (car tag-name)
+					    tag-name))
+				   ,@attrib-forms
+				   ,@(transform-lxml-tree body))))
+	     (dolist (p namespaces)
+	       (setf element-form `(cxml:with-namespace ,p
+				     ,element-form)))
+	     element-form))))
     
     (if (stringp form)
 	`(cxml:text ,form)
@@ -306,7 +300,7 @@ interned symbol (see the interner) for this to work."
 		;; first see if there are any attribute handlers
 		(find-attribute-handlers attributes)
 		;; first see if there's a handler for this tag
-		(find-tag-handler tag-name)
+		(find-handler-named tag-name)
 		;; didn't find a handler for that tag or any of it's
 		;; attributes, must be a "regular" yaclml tag.
 		(handle-regular-tag tag-name attributes body)))
