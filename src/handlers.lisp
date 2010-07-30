@@ -204,6 +204,28 @@
 	       (tal-error "No package named ~S found." (read-from-string pkg-string)))))
       (transform-lxml-form tag))))
 
+
+
+(def-tag-handler tal::print-env (tag)
+  (declare (ignore tag))
+    `(cxml:comment
+      (let ((stuff
+	     (with-output-to-string (out)
+	       (princ " TAL Env (searched top to bottom) : " out)
+	       (format out "~%*expression-package*: ~a" ,*expression-package*)
+	       (format out "~%===========================")
+	       (dolist (bind-set -tal-environment-)
+		 (loop for (key . data) in bind-set
+		       do
+		    (format out "~%~15a : ~s" key data))
+		 (format out "~%=========================="))
+	       (terpri out))))
+	stuff)
+      ))
+
+
+
+;; Code added Copyright (c) 2010, Accelerated Data Works
 ;; Copyright (c) 2002-2005, Edward Marco Baringer
 ;; All rights reserved. 
 ;; 
