@@ -136,6 +136,9 @@ Goes to: <div><div>3</div></div>
   "TAG-HANDLER: Loop across a list and repeat the children. On each
   iteration the environment is extended with the value
 
+  tal:list should evaluate to a list
+  tal:constant-list is parsed as a comma separated string
+
   <tal:loop tal:var='class' tal:list='$efficiencies'>
     <label class='map-control-item'>
       <img class='marker-icon ${$class}' />
