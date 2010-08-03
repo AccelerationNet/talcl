@@ -327,8 +327,13 @@
 
 (defun compile-tal-file (pathname &optional
 			 (expression-package (find-package :common-lisp-user)))
-  (with-tal-compilation-unit pathname
-    (compile-tal-string (read-tal-file-into-string pathname) expression-package)))
+  (restart-case
+      (with-tal-compilation-unit pathname
+	(compile-tal-string (read-tal-file-into-string pathname) expression-package))
+    (retry-compile-tal-file ()
+      :report (lambda (stream)
+		(format stream "Retry compiling template ~s" pathname))
+      (compile-tal-file pathname expression-package))))
 
 (define-condition tal-compilation-condition (simple-condition)
   ((format-control :accessor format-control :initarg :format-control :initform nil)
