@@ -20,6 +20,11 @@
    #:transform-lxml-tree
    #:pull-attrib-val!
    #:tal-env
+
+   ;; dom stuff
+   #:template-processing-sink
+   #:html-template-processing-sink
+   #:make-template-processing-sink
    ))
 
 (eval-when (:load-toplevel :execute :compile-toplevel)
