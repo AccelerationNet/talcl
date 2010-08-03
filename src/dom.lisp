@@ -1,7 +1,13 @@
 (in-package :talcl)
 
-(defclass template-processing-sink () ())
+(defclass template-processing-sink (cxml:broadcast-handler) ())
 (defclass html-template-processing-sink (template-processing-sink) ())
+
+(defun make-template-processing-sink (html-p &rest handlers)
+  (make-instance (if html-p
+		     'html-template-processing-sink
+		     'template-processing-sink)
+		 :handlers handlers))
 
 
 ;;; Make cxml and chtml sinks (which have the same slots) , support the same external interface
