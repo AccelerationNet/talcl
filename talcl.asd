@@ -9,6 +9,7 @@
 			 (:file "compile" :depends-on ("packages" "tal-environment"))
 			 (:file "generator" :depends-on ("packages" "compile"))
 			 (:file "handlers" :depends-on ("packages" "compile")
-				:depends-on ("packages" "compile")))
+				:depends-on ("packages" "compile"))
+			 (:file "dom" :depends-on ("packages" "compile" "handlers")))
 	    ))
   :depends-on (:buildnode :cxml :iterate :arnesi :adwcodebase))
