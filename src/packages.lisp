@@ -23,8 +23,8 @@
 
    ;; dom stuff
    #:template-processing-sink
-   #:html-template-processing-sink
    #:make-template-processing-sink
+   #:tal-processing-instruction
    ))
 
 (eval-when (:load-toplevel :execute :compile-toplevel)
@@ -42,7 +42,8 @@
            #:dolist
            #:include
            #:in-package
-	   #:loop))
+	   #:loop
+	   #:dom-content))
 
 (defpackage :net.common-lisp.project.bese.tal.include-params
   (:use)

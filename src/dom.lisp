@@ -1,31 +1,9 @@
 (in-package :talcl)
 
 (defclass template-processing-sink (cxml:broadcast-handler) ())
-(defclass html-template-processing-sink (template-processing-sink) ())
 
-(defun make-template-processing-sink (html-p &rest handlers)
-  (make-instance (if html-p
-		     'html-template-processing-sink
-		     'template-processing-sink)
-		 :handlers handlers))
-
-
-;;; Make cxml and chtml sinks (which have the same slots) , support the same external interface
-(defmethod cxml::sink-ystream ((sink html-template-processing-sink))
-  (chtml::sink-ystream sink))
-
-(defmethod (setf cxml::sink-ystream) (new (sink html-template-processing-sink))
-  (setf (chtml::sink-ystream sink) new))
-
-(defmethod cxml::stack ((sink html-template-processing-sink))
-  (chtml::stack sink))
-
-(defmethod (setf cxml::stack) (new (sink html-template-processing-sink))
-  (setf (chtml::stack sink) new))
-
-(defmethod cxml::sink-encoding ((sink html-template-processing-sink))
-  (chtml::sink-encoding sink))
-
+(defun make-template-processing-sink (&rest handlers)
+  (make-instance 'template-processing-sink :handlers handlers))
 
 
 (defclass template-node (rune-dom::processing-instruction)
