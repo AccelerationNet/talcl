@@ -159,7 +159,7 @@
                                    (first result)))))
         (read-from-string expression))))
 
-(defun parse-tal-attribute-value (value-string)
+(defun parse-talable-string (value-string)
   "Parser a TAL attribute expression, returns a form for building
   the expression at run time."
   (let ((parts '()))
@@ -188,8 +188,7 @@
                                  (unless (string= "" up-to-now)
                                    (push up-to-now parts)))
                                ;; now push the form
-                               (push `(princ-to-string (or (progn ,@(read-tal-form))
-							   "")) 
+                               (push `(progn ,@(read-tal-form))
                                      parts))
                              (write-char #\$ text))))
                   (#\@ (let ((next-char (peek-char nil val nil nil)))
@@ -214,10 +213,27 @@
                            (push remaining-text parts)))))))
     ;; done parsing, parts now contains everything to put in the
     ;; list, but in reverse order.
+    (nreverse parts)))
+
+(defun parse-tal-attribute-value (value-string)
+  (flet ((form-for-part (p)
+	   (typecase p
+	     (string p)
+	     (T `(aif ,p (princ-to-string it) "")))))
+    (let ((parts (parse-talable-string value-string)))
+      (case (length parts)
+	(0 "")
+	(1 (form-for-part (first parts)))
+	(t `(concatenate 'string
+			 ,@(iter (for p in parts)
+				 (collect (form-for-part p)))))))))
+
+(defun parse-tal-body-content (value-string)
+  (let ((parts (parse-talable-string value-string)))
     (case (length parts)
-      (0 "")
-      (1 (car parts))
-      (t `(concatenate 'string ,@(nreverse parts))))))
+      (0 nil)
+      (1 `(%emit-tagged-content ,(car parts)))
+      (t `(%emit-tagged-content (list ,@(parse-talable-string value-string)))))))
 
 (defun transform-lxml-tree (tree)
   "Given a tree representing some LXML code with TAL attributes
@@ -286,7 +302,9 @@
 	     element-form))))
     
     (if (stringp form)
-	`(cxml:text ,form)
+	(let ((forms (parse-tal-body-content form)))
+					;(break "~s~%~s" form forms)
+	  forms)
 	(if (consp form)
 	    (destructuring-bind (name attributes &rest body) form
 	      (let ((tag-name

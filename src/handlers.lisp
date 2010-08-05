@@ -87,6 +87,7 @@ Gets output as:
 
 (defun %emit-tagged-content (value &optional escape)
   (etypecase value
+    (null nil)
     (string (if escape
 		(cxml:text value)
 		(cxml:unescaped value)))
