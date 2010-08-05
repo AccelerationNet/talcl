@@ -6,10 +6,7 @@
 (defun intern-tal-string (s)
   (intern (string-upcase s) *expression-package*))
 
-(defun pull-attrib-val! (tag key)
-  (when-bind attr (find key (second tag) :key #'car)
-    (setf (second tag) (remove attr (second tag)))
-    (second attr)))
+
 
 
 (def-tag-handler tal::tal (tag)
@@ -28,15 +25,12 @@ Gets output as
 </div>
 "
   ;;becomes a tal:replace
-  (let ((value (pull-attrib-val! tag 'tal::content))
-        (escape-html (pull-attrib-val! tag 'tal::escape-html)))
-    (destructuring-bind (tag-name attributes &rest body) tag
-      (declare (ignore body))
+  (destructure-tag (tag tal::content tal::escape-html)
       (transform-lxml-form
-       `(,tag-name ,attributes
-		   (CONTENT-DUMMY ((tal::replace ,value)
-				   (tal::escape-html ,escape-html))
-				  "DUMMY"))))))
+       `(,tag-name ,tag-attributes
+		   (CONTENT-DUMMY ((tal::replace ,tal::content)
+				   (tal::escape-html ,tal::escape-html))
+				  "DUMMY")))))
 
 
 (def-attribute-handler tal::content-as-is (tag)
@@ -52,14 +46,12 @@ Gets output as
 </div>
 "
   ;;becomes a tal:replace
-  (let ((value (pull-attrib-val! tag 'tal::content-as-is)))
-    (destructuring-bind (tag-name attributes &rest body) tag
-      (declare (ignore body))
-      (transform-lxml-form
-       `(,tag-name ,attributes
-		   (CONTENT-DUMMY ((tal::replace ,value)
-				   (tal::escape-html "nil"))
-				  "DUMMY"))))))
+  (destructure-tag (tag tal::content-as-is)
+    (transform-lxml-form
+     `(,tag-name ,tag-attributes
+		 (CONTENT-DUMMY ((tal::replace ,tal::content-as-is)
+				 (tal::escape-html "nil"))
+				"DUMMY")))))
 
 (def-attribute-handler tal::replace (tag)
   "ATTRIBUTE-HANDLER: Replaces the content of the tag with the
@@ -93,7 +85,7 @@ Gets output as:
     (dom:node (dom-walk-helper value))
     (list
        (case (first value)
-	 (eval (eval (rest value)))
+	 (eval (eval (second value)))
 	 (escaped (%emit-tagged-content (rest value) t))
 	 (unescaped (%emit-tagged-content (rest value) nil))
 	 (T (dolist (v value)
@@ -184,8 +176,7 @@ assuming that $efficiencies resolves to the list {foo,bar}.
 	       (null constant-list))
       (tal-error "A tal:loop tag, must have a list to loop over
         (either tal:list, or tal:constant-list)"))
-    (destructuring-bind (tag-name attributes &rest body) tag
-      (declare (ignore tag-name attributes))
+    (destructure-tag (tag)
       (with-unique-names (loop-item-sym loop-item-idx)
 	`(loop for ,loop-item-sym in ,(or value constant-list)
 	       for ,loop-item-idx upfrom 0
@@ -195,7 +186,7 @@ assuming that $efficiencies resolves to the list {foo,bar}.
 					      ,@(when idx
 						  `(',idx ,loop-item-idx)))
 				       -tal-environment-)))
-	      (list ,@(transform-lxml-tree body))))))))
+	      (list ,@(transform-lxml-tree tag-body))))))))
 
 (def-tag-handler tal:include (tag)
   "TAG-HANDLER: includes another template at this point in the file.
@@ -222,55 +213,53 @@ The template other-template.tal will be evaluated with the additional
 parameters of 'foo' and 'contents'.
 "
    (let ((template-name
-	 (or
-	  (pull-attrib-val! tag 'tal::name)
-	  (awhen (pull-attrib-val! tag 'tal::name-expression)
-	    (parse-tal-attribute-value it))
-	  (tal-error "Missing TAL:NAME and TAL:NAME-EXPRESSION tags."))))
-
-    (destructuring-bind (name attributes &rest body) tag
-      (declare (ignore name))
-      (with-collector (augmented-env)
-	;; 1) grab all the attribute params
-	(loop
-	  for (param value) in attributes
-	  if (eql (find-package :tal.include-params)
-		  (symbol-package param))
-	    do (augmented-env `(quote ,(intern (string param) *expression-package*))
-			       (parse-tal-attribute-value value))
-	  else
-	    do (tal-warn "Ignoring attribute in TAL:INCLUDE: ~S (~S)."
-		     param (symbol-package param)))
+	  (or
+	   (pull-attrib-val! tag 'tal::name)
+	   (awhen (pull-attrib-val! tag 'tal::name-expression)
+	     (parse-tal-attribute-value it))
+	   (tal-error "Missing TAL:NAME and TAL:NAME-EXPRESSION tags."))))
+     (destructure-tag (tag)
+       (with-collector (augmented-env)
+	 ;; 1) grab all the attribute params
+	 (loop
+	   for (param value) in tag-attributes
+	   if (eql (find-package :tal.include-params)
+		   (symbol-package param))
+	     do (augmented-env `(quote ,(intern (string param) *expression-package*))
+				(parse-tal-attribute-value value))
+	   else
+	     do (tal-warn "Ignoring attribute in TAL:INCLUDE: ~S (~S)."
+		    param (symbol-package param)))
 	
-	;; 2) grab all the body params
-	;; 
-	(dolist (child body)
-	  (unless (stringp child)
-	    (destructuring-bind (param-name attributes &rest body) child
-	      (declare (ignore attributes))
-	      (if (eql (find-package :tal.include-params)
-		       (symbol-package param-name))
-		  (augmented-env `(quote ,(intern (string param-name)
-						  *expression-package*))
-				 ;; this used to be evaluated into a string 
-				 ;;`(with-output-to-string (*yaclml-stream*)
-				 ;;   ,@(mapcar #'transform-lxml-form body))
+	 ;; 2) grab all the body params
+	 ;; 
+	 (dolist (child tag-body)
+	   (unless (stringp child)
+	     (destructuring-bind (param-name attributes &rest body) child
+	       (declare (ignore attributes))
+	       (if (eql (find-package :tal.include-params)
+			(symbol-package param-name))
+		   (augmented-env `(quote ,(intern (string param-name)
+						   *expression-package*))
+				  ;; this used to be evaluated into a string 
+				  ;;`(with-output-to-string (*yaclml-stream*)
+				  ;;   ,@(mapcar #'transform-lxml-form body))
 
-				 ;;but now we're just returning the
-				 ;; cxml code snippet, which may
-				 ;; result in some weird enviornment
-				 ;; collisions.
-				 `(quote (progn ,@(mapcar #'transform-lxml-form body)))
-				 )
-		  (tal-warn "Ignoring body tag in TAL:INCLUDE: ~S." param-name)))))
-	;; 3) GO!
-	;; TODO: Figure out the generator logic and make sure this still works.
-	`(funcall (load-tal ,*tal-generator*
-			    ,(if (constantp template-name)
-				 (merge-pathnames template-name *tal-truename*)
-				 `(let ((tal-truename ,*tal-truename*))
-				    (merge-pathnames ,template-name tal-truename))))
-		  (extend-environment (tal-env ,@(augmented-env)) -tal-environment-))))))
+				  ;;but now we're just returning the
+				  ;; cxml code snippet, which may
+				  ;; result in some weird enviornment
+				  ;; collisions.
+				  `(quote (eval (progn ,@(mapcar #'transform-lxml-form body))))
+				  )
+		   (tal-warn "Ignoring body tag in TAL:INCLUDE: ~S." param-name)))))
+	 ;; 3) GO!
+	 ;; TODO: Figure out the generator logic and make sure this still works.
+	 `(funcall (load-tal ,*tal-generator*
+			     ,(if (constantp template-name)
+				  (merge-pathnames template-name *tal-truename*)
+				  `(let ((tal-truename ,*tal-truename*))
+				     (merge-pathnames ,template-name tal-truename))))
+		   (extend-environment (tal-env ,@(augmented-env)) -tal-environment-))))))
 
 
 (def-attribute-handler tal::in-package (tag)

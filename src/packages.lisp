@@ -21,6 +21,11 @@
    #:pull-attrib-val!
    #:tal-env
 
+   #:destructure-tag
+   #:tag-name
+   #:tag-attributes
+   #:tag-body
+
    ;; dom stuff
    #:template-processing-sink
    #:make-template-processing-sink

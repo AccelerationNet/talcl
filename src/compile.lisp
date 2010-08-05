@@ -111,9 +111,26 @@
   (make-instance 'interner
 		 :uri-to-package uri-to-package
 		 :handlers (list chained-handler)))
-;;;;
 
+;;;; HANDLER helpers
 
+(defun pull-attrib-val! (tag key)
+  (when-bind attr (find key (second tag) :key #'car)
+    (setf (second tag) (remove attr (second tag)))
+    (second attr)))
+
+(defmacro destructure-tag ((tag &rest vars) &body body)
+  "Binds tag-name tag-attributes and tag-body"
+  (rebinding (tag)
+    (let ((vars (iter (for var in vars)
+		      (collect
+			  `(,var (pull-attrib-val! ,tag ',var))))))
+      `(let ,vars
+	 (destructuring-bind (tag-name tag-attributes &rest tag-body) ,tag
+	   (declare (ignorable tag-name tag-attributes tag-body))
+	   ,@body)))))
+
+;;;;;;;;;;;;;;
 
 (defvar *expression-package* (find-package :common-lisp-user)
   "The value of *PACKAGE* when tal attribute expressions and for
