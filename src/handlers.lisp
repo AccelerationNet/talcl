@@ -229,7 +229,7 @@ parameters of 'foo' and 'contents'.
 	  if (eql (find-package :tal.include-params)
 		  (symbol-package param))
 	    do (augmented-env `(quote ,(intern (string param) *expression-package*))
-			       (read-tal-expression-from-string value))
+			       (parse-tal-attribute-value value))
 	  else
 	    do (tal-warn "Ignoring attribute in TAL:INCLUDE: ~S (~S)."
 		     param (symbol-package param)))
