@@ -61,10 +61,7 @@ will insert the template in the sax stream."
   (let ((value (pull-attrib-val! tag 'tal::dom-content)))
     (destructuring-bind (tag-name attributes &rest body) tag
       (declare (ignore body))
-      (let ((new-replace-from
-	     `(dom-walk-helper ,(talcl:read-tal-expression-from-string value))))
-	(talcl:transform-lxml-form
-	 `(,tag-name ,attributes
-		     (CONTENT-DUMMY ((tal::replace ,new-replace-from)
-				     (tal::escape-html "nil"))
-				    "DUMMY")))))))
+      (talcl:transform-lxml-form
+       `(,tag-name ,attributes
+		   (CONTENT-DUMMY ((tal::replace ,value))
+				  "DUMMY"))))))

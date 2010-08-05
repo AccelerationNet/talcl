@@ -83,13 +83,21 @@ Gets output as:
 		      (read-tal-expression-from-string escape)
 		      ;; no value supplied, default to T
 		      t)))
-	(rebinding (value)  
-	  `(etypecase ,value
-	     (list (eval ,value))
-	     (string ,(if escape
-			  `(cxml:text ,value)
-			  `(cxml:unescaped ,value)))
-	     ))))))
+	`(%emit-tagged-content ,value ,escape)))))
+
+(defun %emit-tagged-content (value &optional escape)
+  (etypecase value
+    (string (if escape
+		(cxml:text value)
+		(cxml:unescaped value)))
+    (dom:node (dom-walk-helper value))
+    (list
+       (case (first value)
+	 (eval (eval (rest value)))
+	 (escaped (%emit-tagged-content (rest value) t))
+	 (unescaped (%emit-tagged-content (rest value) nil))
+	 (T (dolist (v value)
+	      (%emit-tagged-content v escape)))))))
 
 (def-attribute-handler tal::when (tag)
   "ATTRIBUTE-HANDLER: Causes this tag to only appear when
