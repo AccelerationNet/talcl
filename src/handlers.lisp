@@ -277,12 +277,13 @@ parameters of 'foo' and 'contents'.
 (def-attribute-handler tal::in-package (tag)
   "ATTRIBUTE-HANDLER: sets the package in which lisp evaluation
 happens."
-  (let ((pkg-string (pull-attrib-val! tag 'tal::in-package)))
-    (let ((*expression-package*
-	   (or (find-package (read-from-string pkg-string))
-	       (tal-error "No package named ~S found."
-			  (read-from-string pkg-string)))))
-      (transform-lxml-form tag))))
+  (let* ((pkg-string (pull-attrib-val! tag 'tal::in-package))
+	 (pkg (or (find-package (read-from-string pkg-string))
+		  (tal-error "No package named ~S found."
+			     (read-from-string pkg-string)))))
+    (let ((*expression-package* pkg))
+      `(let ((*expression-package* ,pkg))
+	 ,(transform-lxml-form tag)))))
 
 
 
