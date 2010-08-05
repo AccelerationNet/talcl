@@ -188,7 +188,8 @@
                                  (unless (string= "" up-to-now)
                                    (push up-to-now parts)))
                                ;; now push the form
-                               (push `(princ-to-string (progn ,@(read-tal-form))) 
+                               (push `(princ-to-string (or (progn ,@(read-tal-form))
+							   "")) 
                                      parts))
                              (write-char #\$ text))))
                   (#\@ (let ((next-char (peek-char nil val nil nil)))
