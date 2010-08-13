@@ -78,7 +78,7 @@ Gets output as:
 	`(%emit-tagged-content ,value ,escape)))))
 
 (defun %emit-tagged-content (value &optional escape)
-  (etypecase value
+  (typecase value
     (null nil)
     (string (if escape
 		(cxml:text value)
@@ -90,7 +90,8 @@ Gets output as:
 	 (escaped (%emit-tagged-content (rest value) t))
 	 (unescaped (%emit-tagged-content (rest value) nil))
 	 (T (dolist (v value)
-	      (%emit-tagged-content v escape)))))))
+	      (%emit-tagged-content v escape)))))
+    (T (%emit-tagged-content (princ-to-string value) escape))))
 
 (def-attribute-handler tal::when (tag)
   "ATTRIBUTE-HANDLER: Causes this tag to only appear when
