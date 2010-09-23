@@ -191,6 +191,22 @@ assuming that $efficiencies resolves to the list {foo,bar}.
 				     -tal-environment-)))
 	    (list ,@(transform-lxml-tree tag-body)))))))
 
+(defmacro buffer-xml-output (() &body body)
+  "xml parameters like <param:foo><div>bar</div></param:foo>
+   need to be processed and their output buffered for insertion
+   into included templates
+  "
+  (with-unique-names (out-str)
+    `(with-output-to-string (,out-str)
+       (let ((cxml::*sink* (cxml::make-character-stream-sink ,out-str))
+	     (cxml::*current-element* nil)
+	     (cxml::*unparse-namespace-bindings* cxml::*initial-namespace-bindings*)
+	     (cxml::*current-namespace-bindings* nil))
+	 (setf (cxml::sink-omit-xml-declaration-p cxml::*sink*) T)
+	 (sax:start-document cxml::*sink*)
+	 ,@body  
+	 (sax:end-document cxml::*sink*)))))
+
 (def-tag-handler tal:include (tag)
   "TAG-HANDLER: includes another template at this point in the file.
 The template should be named by the tal:name attribute or by
@@ -253,7 +269,7 @@ parameters of 'foo' and 'contents'.
 		    ;; collisions.
 		    (augmented-env
 		     (var param-name)
-		     `(quote (eval (progn ,@(mapcar #'transform-lxml-form body)))))
+		     `(buffer-xml-output () ,@(mapcar #'transform-lxml-form body)))
 		    (tal-warn "Ignoring body tag in TAL:INCLUDE: ~S." param-name)))))
 	  ;; 3) GO!
 	  ;; TODO: Figure out the generator logic and make sure this still works.
@@ -268,7 +284,10 @@ parameters of 'foo' and 'contents'.
 			      template-name)))
 	     (call-template-with-tal-environment
 	      ,*tal-generator* ,tname
-	      (extend-environment (tal-env ,@(augmented-env)) -tal-environment-)))))))))
+	      (tal-env ,@(augmented-env))
+	      ;; dont need to extend because that is already in the lisp env
+	      ;; (extend-environment (tal-env ,@(augmented-env)) -tal-environment-)
+	      ))))))))
 
 (def-attribute-handler tal::in-package (tag)
   "ATTRIBUTE-HANDLER: sets the package in which lisp evaluation

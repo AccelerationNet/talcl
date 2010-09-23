@@ -89,19 +89,19 @@
     (assert-equal *test-count* 3
      "We included 3 times so we should have incf'ed 3 times"))
 
-(defun test-include-name (cnt name)
+(defun %test-include-name (cnt name)
   (string-equal name (case cnt (1 "FIRST") (2 "SECOND") (3 "THIRD"))))
 
-(adwtest test-include-param-attribs (compile-tests)
-  (setf *test-count* 0)
-  (add-tal *test-generator* "basic"
-	   "<div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+(adwtest test-include-param-attribs (compile-tests)  
+    (setf *test-count* 0)
+    (add-tal *test-generator* "basic"
+	     "<div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
                    tal:in-package=\"talcl-test\">
                 This is included content ${ (incf *test-count*) }, param:${value}
-            ${ (assert-true (test-include-name *test-count* value)) }
+            ${ (assert-true (%test-include-name *test-count* value)) }
             </div>")
-  (add-tal *test-generator* "test"
-	   "<div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+    (add-tal *test-generator* "test"
+	     "<div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
                  xmlns:param=\"http://common-lisp.net/project/bese/tal/params\"
                  tal:in-package=\"talcl-test\"
                  tal:let=\"pname2 'second pname3 'third\">
@@ -111,4 +111,30 @@
           </div>")
     (talcl:call-template-with-tal-environment *test-generator* "test" ())
     (assert-equal *test-count* 3
-     "We included 3 times so we should have incf'ed 3 times"))
+		  "We included 3 times so we should have incf'ed 3 times"))
+
+(defun %test-include-body-name (cnt name)
+  (string-equal name (case cnt (1 "FIRST") (2 "SECOND") (3 "<div>THIRD</div>"))))
+
+(adwtest test-include-param-body (compile-tests)
+  (setf *test-count* 0)
+  (add-tal *test-generator* "basic"
+	   "<div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+                   tal:in-package=\"talcl-test\">
+                This is included content ${ (incf *test-count*) }, param:${value}
+            ${ (assert-true (%test-include-body-name *test-count* value)) }
+            </div>")
+  (add-tal *test-generator* "test"
+	   "<div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+                 xmlns:param=\"http://common-lisp.net/project/bese/tal/params\"
+                 tal:in-package=\"talcl-test\"
+                 tal:let=\"pname2 'second pname3 'third\">
+               <tal:include tal:name=\"basic\" ><param:value>FIRST</param:value></tal:include>
+               <tal:include tal:name=\"basic\" >
+                 <param:value>${pname2}</param:value></tal:include>
+               <tal:include tal:name=\"basic\" >
+                 <param:value><div>${pname3}</div></param:value></tal:include>
+          </div>")
+  (talcl:call-template-with-tal-environment *test-generator* "test" ())
+  (assert-equal *test-count* 3
+		"We included 3 times so we should have incf'ed 3 times"))

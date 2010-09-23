@@ -48,13 +48,10 @@
 	      (union (ensure-list (get tag :tests))
 		     (list name))))
   `(lisp-unit:define-test ,name
-     (with-output-to-string (out-str)
-       (let ((*tal-generator* *test-generator*)
-	     (cxml::*sink* (make-output-sink out-str))
-	     (cxml::*current-element* nil)
-	     (cxml::*unparse-namespace-bindings* cxml::*initial-namespace-bindings*)
-	     (cxml::*current-namespace-bindings* nil))
-	 ,@body ))))
+     (let* ((*tal-generator* *test-generator*)
+	    (out (talcl::buffer-xml-output () ,@body)))
+       (tal-log.info #?"\nTal Test: ${',name} \n-------------\n${out}\n-------------\n"
+      ))))
 
 (defun run-tests-with-debugging (&key suites tests)
   (let* ((lisp-unit::*use-debugger* T)
