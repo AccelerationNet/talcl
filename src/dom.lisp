@@ -37,14 +37,12 @@ will insert the template in the sax stream."
 		 (cxml::*current-namespace-bindings* nil))
 	     (let ((buildnode:*document* cxml::*walk-document*) ; do we actually need this?
 		   )
-	       (funcall (load-tal generator template-name) env)))))
-    (let ((tn
-    (make-instance 'template-node
-		   :owner buildnode:*document*
-		   :target :tal
-		   :data #'template-node-fn
-		   )))
-      
+	       (talcl::call-template-with-tal-environment generator template-name env)))))
+    (let ((tn (make-instance 'template-node
+			     :owner buildnode:*document*
+			     :target :tal
+			     :data #'template-node-fn
+			     )))      
       tn)))
 
 

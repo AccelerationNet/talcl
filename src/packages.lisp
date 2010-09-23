@@ -20,7 +20,7 @@
    #:transform-lxml-tree
    #:pull-attrib-val!
    #:tal-env
-
+   #:call-template-with-tal-environment
    #:destructure-tag
    #:tag-name
    #:tag-attributes

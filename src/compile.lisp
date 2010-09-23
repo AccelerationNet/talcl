@@ -152,7 +152,9 @@
 (defun |$ tal reader| (stream char)
   "The $ char reader for tal expressions."
   (declare (ignore char))
-  `(lookup-tal-variable ',(read stream) -tal-environment-))
+  ;`(lookup-tal-variable ',(read stream) -tal-environment-)
+  (read stream)
+  )
 
 (defun read-tal-expression-from-string (expression &optional implicit-progn-p)
   "Reads a single form from the string EXPRESSION using the TAL
@@ -171,9 +173,10 @@
               (while obj)
               (setf pos new-pos)
               (collect obj into result)
-              (finally (return (if (> (length result) 1)
-                                   (cons 'progn result)
-                                   (first result)))))
+              (finally
+	       (return (if (> (length result) 1)
+			   (cons 'progn result)
+			   (first result)))))
         (read-from-string expression))))
 
 (defun parse-talable-string (value-string)
@@ -320,11 +323,14 @@
     
     (if (stringp form)
 	(let ((forms (parse-tal-body-content form)))
-					;(break "~s~%~s" form forms)
 	  forms)
 	(if (consp form)
 	    (destructuring-bind (name attributes &rest body) form
-	      (let ((tag-name
+	      ;; the cxml parser reverses attribute order, which
+	      ;; is problematic.  Reverse these so that tal produces
+	      ;; the expected output
+	      (let ((attributes (reverse attributes))
+		    (tag-name
 		     (if (consp name)	; (name . namespace)
 			 (let ((pkg (cdr (assoc (cdr name) *uri-to-package*
 						:test #'string=))))
@@ -344,7 +350,7 @@
   
 (defun compile-tal-string-to-lambda (string &optional (expression-package *package*))
   "Returns the source code for the tal function form the tal text STRING."
-  `(lambda (-tal-environment-)
+  `(lambda (&optional -tal-environment-)
      (declare (ignorable -tal-environment-)
 	      (optimize (debug 3)))
      ,(let ((*package* (find-package :ucw))
@@ -357,7 +363,7 @@
 
 (defun compile-tal-string (string &optional
 			   (expression-package (find-package :common-lisp-user)))
-  (let* ((*break-on-signals* t)
+  (let* ((*break-on-signals* nil)
 	 (lamb (compile-tal-string-to-lambda string expression-package)))
     (compile nil lamb)))
 
@@ -370,6 +376,28 @@
       :report (lambda (stream)
 		(format stream "Retry compiling template ~s" pathname))
       (compile-tal-file pathname expression-package))))
+
+(defun %call-template-with-tal-environment (tal-fn env)
+  "This will call a template-fn with all the tal-environment variables
+   bound into the lisp dynamic environment."
+  
+  ;; Why first... doesnt make much sense but we seem
+  ;; to be storing the alist in a list
+  (iter (for (k . v) in (first env))
+	(collect k into keys)
+	(collect v into values)
+	(finally 
+	 (progv keys values
+	   (return (funcall tal-fn env))
+	   ))))
+
+(defun call-template-with-tal-environment (generator template env)
+  "This will call a template with all the tal-environment variables
+   bound into the lisp dynamic environment."
+  
+  ;; Why first... doesnt make much sense but we seem
+  ;; to be storing the alist in a list
+  (%call-template-with-tal-environment (load-tal generator template) env))
 
 (define-condition tal-compilation-condition (simple-condition)
   ((format-control :accessor format-control :initarg :format-control :initform nil)
