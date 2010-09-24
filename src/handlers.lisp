@@ -3,6 +3,25 @@
 (in-package :talcl)
 
 ;;;; * Standard TAL handlers
+
+(defmacro buffer-xml-output (() &body body)
+  "xml parameters like <param:foo><div>bar</div></param:foo>
+   need to be processed and their output buffered for insertion
+   into included templates
+  "
+  (with-unique-names (out-str)
+    `(with-output-to-string (,out-str)
+       (let ((cxml::*sink* (cxml::make-character-stream-sink ,out-str))
+	     (cxml::*current-element* nil)
+	     (cxml::*unparse-namespace-bindings* cxml::*initial-namespace-bindings*)
+	     (cxml::*current-namespace-bindings* nil)
+	     (cxml::*om))
+	 (setf (cxml::sink-omit-xml-declaration-p cxml::*sink*) T)
+	 (sax:start-document cxml::*sink*)
+	 ,@body  
+	 (sax:end-document cxml::*sink*)))))
+
+
 (defun intern-tal-string (s)
   (intern (string-upcase s) *expression-package*))
 
@@ -202,22 +221,6 @@ assuming that $efficiencies resolves to the list {foo,bar}.
 					      ,@(when idx `(',idx ,idx)))
 				     -tal-environment-)))
 	    (list ,@(transform-lxml-tree tag-body)))))))
-
-(defmacro buffer-xml-output (() &body body)
-  "xml parameters like <param:foo><div>bar</div></param:foo>
-   need to be processed and their output buffered for insertion
-   into included templates
-  "
-  (with-unique-names (out-str)
-    `(with-output-to-string (,out-str)
-       (let ((cxml::*sink* (cxml::make-character-stream-sink ,out-str))
-	     (cxml::*current-element* nil)
-	     (cxml::*unparse-namespace-bindings* cxml::*initial-namespace-bindings*)
-	     (cxml::*current-namespace-bindings* nil))
-	 (setf (cxml::sink-omit-xml-declaration-p cxml::*sink*) T)
-	 (sax:start-document cxml::*sink*)
-	 ,@body  
-	 (sax:end-document cxml::*sink*)))))
 
 (def-tag-handler tal:include (tag)
   "TAG-HANDLER: includes another template at this point in the file.

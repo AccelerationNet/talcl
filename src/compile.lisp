@@ -185,12 +185,17 @@
   (let ((parts '()))
     (with-input-from-string (val value-string)
       (with-output-to-string (text)
-        (flet ((read-tal-form ()
+        (flet ((read-tal-bracketed-form ()
+		 (let ((*readtable* (copy-readtable nil))
+                       (*package* *expression-package*))
+		   (set-macro-character #\} (get-macro-character #\)) nil *readtable*)
+		   (set-macro-character #\$ #'|$ tal reader| nil *readtable*)
+		   (read-delimited-list #\} val)))
+	       (read-tal-form ()
                  (let ((*readtable* (copy-readtable nil))
                        (*package* *expression-package*))
-                   (set-macro-character #\} (get-macro-character #\)) nil *readtable*)
-                   (set-macro-character #\$ #'|$ tal reader| nil *readtable*)
-                   (read-delimited-list #\} val))))
+		   (set-macro-character #\$ #'|$ tal reader| nil *readtable*)
+		   (read val))))
           (loop
              for char = (read-char val nil nil)
              while char
@@ -200,17 +205,29 @@
                              (error "Parse error in ~S. #\\ at end of string." value-string)
                              (write-char next-char text))))
                   (#\$ (let ((next-char (peek-char nil val nil nil nil)))
-                         (if (and next-char (char= #\{ next-char))
-                             (progn
-                               (read-char val nil nil nil)
-                               ;; first push the text uptil now onto parts
-                               (let ((up-to-now (get-output-stream-string text)))
-                                 (unless (string= "" up-to-now)
-                                   (push up-to-now parts)))
-                               ;; now push the form
-                               (push `(progn ,@(read-tal-form))
-                                     parts))
-                             (write-char #\$ text))))
+			 (when next-char
+			   (cond
+			     ;; escaped $
+			     ((char= #\$ next-char)
+			      (read-char val nil nil nil)
+			      (write-char #\$ text))
+
+			     (t ;; tal-expression
+			      (let ((bracketed? (char= #\{ next-char)))
+				;; remove open { if nec
+				(when bracketed?
+				  (read-char val nil nil nil))
+				;; first push the text uptil now onto parts
+				(let ((up-to-now (get-output-stream-string text)))
+				  (unless (string= "" up-to-now)
+				    (push up-to-now parts)))
+				;; now push the form
+				(push (if bracketed?
+					  `(progn ,@(read-tal-bracketed-form))
+					  (read-tal-form))
+				  parts))
+			      )))))
+
                   (#\@ (let ((next-char (peek-char nil val nil nil)))
                          (if (and next-char (char= #\{ next-char))
                              (progn
@@ -365,7 +382,7 @@
 			   (expression-package (find-package :common-lisp-user)))
   (let* ((*break-on-signals* nil)
 	 (lamb (compile-tal-string-to-lambda string expression-package)))
-    (break "~S" lamb)
+    ;; (break "~S" lamb)
     (compile nil lamb)))
 
 (defun compile-tal-file (pathname &optional

@@ -144,3 +144,50 @@
   (talcl:call-template-with-tal-environment *test-generator* "test" ())
   (assert-equal *test-count* 3
 		"We included 3 times so we should have incf'ed 3 times"))
+
+(adwtest test-tal/lisp-escaping-body ()
+  "Test tal expressions in body areas"
+  (let* ((t1 "
+          <div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+               tal:in-package=\"talcl-test\"
+               tal:let=\"x 1 y 'second z 'third\"
+          >${ value }$$value$(princ-to-string value)$$(dont-eval)</div>")
+	 (t2 "
+          <div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+               tal:in-package=\"talcl-test\"
+               tal:let=\"x 1 y 'second z 'third\"
+          >$value$$value${value}$$(dont-eval)</div>")
+	 (fn1 (compile-tal-string t1))
+	 (fn2 (compile-tal-string t2))
+	 (out1 (talcl::buffer-xml-output ()
+		 (talcl::%call-template-with-tal-environment fn1 (tal-env 'value 1))))
+	 (out2 (talcl::buffer-xml-output ()
+		 (talcl::%call-template-with-tal-environment fn2 (tal-env 'value 1)))))
+    (tal-log.info "~%Out1:~s~%~%out2:~s" out1 out2 )
+    (assert-equalp out1 out2)
+    ))
+
+(adwtest test-tal/lisp-escaping-attribs ()
+  "Test tal expressions in attributes"
+  (let* ((t1 "
+          <div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+               tal:in-package=\"talcl-test\"
+               tal:let=\"x 1 y 'second z 'third\"
+               foo=\"${ value }\" bar=\"$$value\" bast=\"$(princ-to-string value)\"
+               brocolli=\"$$(dont-eval)\" />")
+	 (t2 "
+          <div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+               tal:in-package=\"talcl-test\"
+               tal:let=\"x 1 y 'second z 'third\"
+               foo=\"$value\" bar=\"$$value\" bast=\"${value}\"
+               brocolli=\"$$(dont-eval)\" />")
+	 (fn1 (compile-tal-string t1))
+	 (fn2 (compile-tal-string t2))
+	 (out1 (talcl::buffer-xml-output ()
+		 (talcl::%call-template-with-tal-environment fn1 (tal-env 'value 1))))
+	 (out2 (talcl::buffer-xml-output ()
+		 (talcl::%call-template-with-tal-environment fn2 (tal-env 'value 1)))))
+    (tal-log.info "~%Out1:~s~%~%out2:~s" out1 out2 )
+    (assert-equalp out1 out2)
+    ))
+
