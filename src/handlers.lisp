@@ -74,6 +74,17 @@ Gets output as:
 		      t)))
 	`(%emit-tagged-content ,value ,escape)))))
 
+
+(define-compiler-macro %emit-tagged-content (&whole form value &optional escape)
+  (if (not (and (constantp value) (constantp escape)))
+      form
+      (typecase value
+	(null nil)
+	(string (if escape
+		    `(cxml:text ,value)
+		    `(cxml:unescaped ,value)))
+	(T form))))
+
 (defun %emit-tagged-content (value &optional escape)
   (typecase value
     (null nil)
@@ -81,6 +92,7 @@ Gets output as:
 		(cxml:text value)
 		(cxml:unescaped value)))
     (dom:node (dom-walk-helper value))
+    (function (funcall value escape))
     (list
        (case (first value)
 	 (eval (eval (second value)))
@@ -269,7 +281,7 @@ parameters of 'foo' and 'contents'.
 		    ;; collisions.
 		    (augmented-env
 		     (var param-name)
-		     `(buffer-xml-output () ,@(mapcar #'transform-lxml-form body)))
+		     `(lambda (&optional escape) ,@(mapcar #'transform-lxml-form body)))
 		    (tal-warn "Ignoring body tag in TAL:INCLUDE: ~S." param-name)))))
 	  ;; 3) GO!
 	  ;; TODO: Figure out the generator logic and make sure this still works.

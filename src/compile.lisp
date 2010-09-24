@@ -365,6 +365,7 @@
 			   (expression-package (find-package :common-lisp-user)))
   (let* ((*break-on-signals* nil)
 	 (lamb (compile-tal-string-to-lambda string expression-package)))
+    (break "~S" lamb)
     (compile nil lamb)))
 
 (defun compile-tal-file (pathname &optional

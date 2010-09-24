@@ -122,7 +122,13 @@
 	   "<div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
                    tal:in-package=\"talcl-test\">
                 This is included content ${ (incf *test-count*) }, param:${value}
-            ${ (assert-true (%test-include-body-name *test-count* value)) }
+                <div class=\"content\" tal:content=\"value\" />
+                <tal:tal tal:replace=\"value\" />
+                ${ (assert-true (typep value 'function))
+                   (assert-true (%test-include-body-name
+                                 *test-count*
+                                 (talcl::buffer-xml-output () (funcall value))))
+                 }
             </div>")
   (add-tal *test-generator* "test"
 	   "<div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
@@ -134,7 +140,7 @@
                  <param:value>${pname2}</param:value></tal:include>
                <tal:include tal:name=\"basic\" >
                  <param:value><div>${pname3}</div></param:value></tal:include>
-          </div>")
+           </div>")
   (talcl:call-template-with-tal-environment *test-generator* "test" ())
   (assert-equal *test-count* 3
 		"We included 3 times so we should have incf'ed 3 times"))
