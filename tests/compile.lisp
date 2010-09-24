@@ -172,13 +172,11 @@
   (let* ((t1 "
           <div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
                tal:in-package=\"talcl-test\"
-               tal:let=\"x 1 y 'second z 'third\"
                foo=\"${ value }\" bar=\"$$value\" bast=\"$(princ-to-string value)\"
                brocolli=\"$$(dont-eval)\" />")
 	 (t2 "
           <div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
                tal:in-package=\"talcl-test\"
-               tal:let=\"x 1 y 'second z 'third\"
                foo=\"$value\" bar=\"$$value\" bast=\"${value}\"
                brocolli=\"$$(dont-eval)\" />")
 	 (fn1 (compile-tal-string t1))
