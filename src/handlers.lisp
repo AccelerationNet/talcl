@@ -158,9 +158,7 @@ Goes to: <div><div>3</div></div>
     (collect (list name value) into let-bindings)
     (finally
      (return
-       `(let (,@let-bindings
-	      (-tal-environment- (extend-environment (list (list ,@env-bindings))
-						     -tal-environment-)))
+       `(let (,@let-bindings)
 	  ,(transform-lxml-form tag))))))
 
 (def-tag-handler tal::lisp (tag)
@@ -216,11 +214,7 @@ assuming that $efficiencies resolves to the list {foo,bar}.
 	     ,@(when idx
 		 `(for ,idx upfrom 0))
 	     append
-	  (let ((-tal-environment-
-		 (extend-environment (tal-env ',name ,name
-					      ,@(when idx `(',idx ,idx)))
-				     -tal-environment-)))
-	    (list ,@(transform-lxml-tree tag-body)))))))
+	  (list ,@(transform-lxml-tree tag-body))))))
 
 (def-tag-handler tal:include (tag)
   "TAG-HANDLER: includes another template at this point in the file.
@@ -300,8 +294,6 @@ parameters of 'foo' and 'contents'.
 	     (call-template-with-tal-environment
 	      ,*tal-generator* ,tname
 	      (tal-env ,@(augmented-env))
-	      ;; dont need to extend because that is already in the lisp env
-	      ;; (extend-environment (tal-env ,@(augmented-env)) -tal-environment-)
 	      ))))))))
 
 (def-attribute-handler tal::in-package (tag)

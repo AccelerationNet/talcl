@@ -151,11 +151,11 @@
 	  (pushnew ',tag-name *tal-tag-handlers*)))
 
 (defun |$ tal reader| (stream char)
-  "The $ char reader for tal expressions."
+  "The $ char reader for tal expressions.
+   This just tries to smooth over inconsistancies encountered by using
+   $var-name in tal:foo attributes and regular foo attributes"
   (declare (ignore char))
-  ;`(lookup-tal-variable ',(read stream) -tal-environment-)
-  (read stream)
-  )
+  (read stream))
 
 (defun read-tal-expression-from-string (expression &optional implicit-progn-p)
   "Reads a single form from the string EXPRESSION using the TAL
@@ -165,7 +165,6 @@
           "No expression package!")
   (let ((*readtable* (copy-readtable nil))
         (*package* *expression-package*))
-    ;; use $SYMBOL to access the value of the environment variable
     ;; SYMBOL
     (set-macro-character #\$ #'|$ tal reader| nil *readtable*)
     (if implicit-progn-p
@@ -372,10 +371,11 @@
 
 (defun compile-tal-string-to-lambda (string &optional (expression-package *package*))
   "Returns the source code for the tal function form the tal text STRING."
-  `(lambda (&optional -tal-environment-)
+  `(lambda (&optional -tal-environment-);; Just used for debugging at this point
      (declare (ignorable -tal-environment-)
 	      (optimize (debug 3)))
-     (let ((name-being-compiled ,*name-being-compiled*))
+     ;; lexically bind the name being compiled so it can be included in error messages
+     (let ((name-being-compiled ,*name-being-compiled*)) 
        (handler-case	   
 	   ,(let ((*string-being-compiled* string)
 		  (*package* (find-package :ucw))
@@ -385,6 +385,7 @@
 							 (cxml-xmls:make-xmls-builder
 							  :include-namespace-uri t)))))
 	      (transform-lxml-form parse-tree))
+	 ;; Put more information on errors thrown from compiled tal functions
 	 (error (e)
 	   (tal-runtime-error "Compiled Tal ~s~%threw an error: ~s " name-being-compiled e))
 	 ))))
@@ -406,28 +407,6 @@
       :report (lambda (stream)
 		(format stream "Retry compiling template ~s" pathname))
       (compile-tal-file pathname expression-package)))))
-
-(defun %call-template-with-tal-environment (tal-fn env)
-  "This will call a template-fn with all the tal-environment variables
-   bound into the lisp dynamic environment."
-  
-  ;; Why first... doesnt make much sense but we seem
-  ;; to be storing the alist in a list
-  (iter (for (k . v) in (first env))
-	(collect k into keys)
-	(collect v into values)
-	(finally 
-	 (progv keys values
-	   (return (funcall tal-fn env))
-	   ))))
-
-(defun call-template-with-tal-environment (generator template env)
-  "This will call a template with all the tal-environment variables
-   bound into the lisp dynamic environment."
-  
-  ;; Why first... doesnt make much sense but we seem
-  ;; to be storing the alist in a list
-  (%call-template-with-tal-environment (load-tal generator template) env))
 
 (define-condition tal-compilation-condition (simple-condition)
   ((format-control :accessor format-control :initarg :format-control :initform nil)
@@ -470,7 +449,7 @@
 	      (summing line-len into total-len)
 	      (counting line into lines)
 	      (when (> total-len target)
-		(return #?"line: ${lines} col: ${ (- target start-len) }, line: ${line}"))
+		(return (format nil "line: ~s col: ~s, line: ~s" lines (- target start-len) line)))
 	      )))))
 
 (define-condition tal-unexpected-eof-compilation-error (tal-compilation-error error) ())

@@ -21,134 +21,34 @@
    (error "Failed to load template content in utf-8, latin-1 or ascii ~a" pathname)))
 
 
-;;;; TAL environments are simply lists of binding-sets, a binding set
-;;;; can be either a hash table, an object or an alist.
+(defun %call-template-with-tal-environment (tal-fn env)
+  "This will call a template-fn with all the tal-environment variables
+   bound into the lisp dynamic environment."
+  
+  ;; Why first... doesnt make much sense but we seem
+  ;; to be storing the alist in a list
+  (iter (for (k v . rest) on env by #'cddr)
+	(collect k into keys)
+	(collect v into values)
+	(finally 
+	 (progv keys values
+	   ;; pass env to funcall to assist debugging
+	   (return (funcall tal-fn env))
+	   ))))
 
-;;;; TAL Environment protocol
-
-(defmacro tal-value (name)
-  "Get the tal variable called NAME from -TAL-ENVIRONMENT-"
-  `(lookup-tal-variable ,name -tal-environment-))
-
-(defgeneric lookup-tal-variable (name environment)
-  (:documentation "Return the value assciated with NAME (a
-  symbol) in the environment ENVIRONMENT."))
-
-(defgeneric (setf lookup-tal-variable) (value name environment))
-
-(defgeneric fetch-tal-value (name binding)
-  (:documentation "Return the value associated with NAME in the
-  binding set BINDING."))
-
-(defgeneric (setf fetch-tal-value) (value name binding))
-
-(defun extend-environment (new-environment environment)
-  "Create a new environment with all the bindings in NEW-ENVIRONMENT and ENVIRONMENT.
-
-Any bindings in NEW-ENVIRNOMENT shadow (on successive calls to
-LOOKUP-TAL-VARIABLE) other bindings currently present in
-ENVIRONMENT."
-  ;; return a new list containing all the binding-sets of
-  ;; new-environment and then all the binding sets of environment.
-  (append new-environment environment))
-
-;;;; Standard Environment
-
-(defun make-standard-tal-environment (&rest binding-sets)
-  "Returns an environment consisting of BINDING-SETS.
-
-Each binding set can be an alist, an object, a hash table, or any
-object for which the a method on LOOKUP-TAL-VARIABLE has been
-defined.
-
-See alse: TAL-ENV"
-  (copy-list binding-sets))
-
-(defmethod lookup-tal-variable (name (env list))
-  "Return the value associated with NAME in the environment
-  ENV. ENV is represetend as a list of binding sets."
-  (loop
-     for bind-set in env
-     do (multiple-value-bind (value found-p)
-            (fetch-tal-value name bind-set)
-          (when found-p
-            (return-from lookup-tal-variable (values value t)))))
-  (values nil nil))
-
-(define-condition setf-tal-variable-error (error)
-  ((variable-name :initarg :variable-name)
-   (environment :initarg :environment))
-  (:report (lambda (c s)
-	     (format s "Error setting the tal variable ~S~:[.~; in the environment ~S.~]"
-		       (slot-value c 'variable-name)
-		       (slot-boundp c 'environment)
-		       (slot-value c 'environment)))))
-
-(define-condition unfound-tal-variable (setf-tal-variable-error)
-  ()
-  (:report (lambda (c s)
-	     (format s "Attempting to set unknown tal variable ~S~:[.~; in the environment ~S.~]"
-		       (slot-value c 'variable-name)
-		       (slot-boundp c 'environment)
-		       (slot-value c 'environment)))))
-
-(define-condition unsettable-tal-variable (setf-tal-variable-error)
-  ()
-  (:report (lambda (c s)
-	     (format s "The tal variable ~S is unsettable~:[.~; in the environment ~S.~]"
-		       (slot-value c 'variable-name)
-		       (slot-boundp c 'environment)
-		       (slot-value c 'environment)))))
-
-(defmethod (setf lookup-tal-variable) (value name (env list))
-  (loop
-     for bind-set in env
-     do (multiple-value-bind (old-value found-p)
-            (fetch-tal-value name bind-set)
-	  (declare (ignore old-value))
-          (when found-p
-	    (return-from lookup-tal-variable
-	      (setf (fetch-tal-value name bind-set) value)))))
-  (error 'unfound-tal-variable :variable-name name :environment env))
+(defun call-template-with-tal-environment (generator template env)
+  "This will call a template with all the tal-environment variables
+   bound into the lisp dynamic environment."
+  
+  ;; Why first... doesnt make much sense but we seem
+  ;; to be storing the alist in a list
+  (%call-template-with-tal-environment (load-tal generator template) env))
 
 (defun tal-env (&rest pairs)
   "Creates a fresh tal environment from the plist PAIRS."
-  (list
-   (iterate (for (key value) :on pairs :by #'cddr)
-            (collect (cons key value)))))
+  ;; currently just an alias for list
+  pairs)
 
-;;;; Assoc list binding set
-
-(defmethod fetch-tal-value (name (binding-set list))
-  (let ((cons (assoc name binding-set :test #'eql)))
-    (if cons
-        (values (cdr cons) t)
-        (values nil nil))))
-
-(defmethod (setf fetch-tal-value) (value name (binding-set list))
-  (declare (ignore value))
-  (error 'unsettable-tal-variable :variable-name name :environment binding-set))
-
-;;;; Object binding sets
-
-(defmethod fetch-tal-value (name (obj standard-object))
-  (if (and (slot-exists-p obj name)
-           (slot-boundp obj name))
-      (values (slot-value obj name) t)
-      (values nil nil)))
-
-(defmethod (setf fetch-tal-value) (value name (obj standard-object))
-  (if (slot-exists-p obj name)
-      (setf (slot-value obj name) value)
-      (error 'unfound-tal-variable :variable-name value :environment obj)))
-
-;;;; Hash table binding sets
-
-(defmethod fetch-tal-value (name (ht hash-table))
-  (gethash name ht))
-
-(defmethod (setf fetch-tal-value) (value name (ht hash-table))
-  (setf (gethash name ht) value))
 
 ;; Copyright (c) 2002-2005, Edward Marco Baringer
 ;; All rights reserved. 

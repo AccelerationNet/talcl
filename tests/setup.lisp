@@ -11,8 +11,6 @@
 
 (in-package :talcl-test)
 
-(cl-interpol:enable-interpol-syntax)
-
 (eval-always
   (deflogger talcl-test::tal-log () :appender (make-slime-repl-log-appender)))
 
@@ -50,8 +48,7 @@
   `(lisp-unit:define-test ,name
      (let* ((*tal-generator* *test-generator*)
 	    (out (talcl::buffer-xml-output () ,@body)))
-       (tal-log.info #?"\nTal Test: ${',name} \n-------------\n${out}\n-------------\n"
-      ))))
+       (tal-log.info "\nTal Test: ~S \n-------------\n~a\n-------------\n" ',name out))))
 
 (defun run-tests-with-debugging (&key suites tests)
   (let* ((lisp-unit::*use-debugger* T)
@@ -62,4 +59,4 @@
 		(lisp-unit::run-test-thunks
 		 (lisp-unit::get-test-thunks
 		  (if (null tests) (get-tests *package*) tests))))))
-    (tal-log.info #?"\n ** TEST RESULTS ** \n-----------\n${out}\n------------\n")))
+    (tal-log.info "\n ** TEST RESULTS ** \n-----------\n~A\n------------\n" out)))
