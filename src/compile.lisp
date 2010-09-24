@@ -67,8 +67,9 @@
 ;;;; "http://common-lisp.net/project/bese/tal/params" name space.
 
 (defvar *tal-attribute-handlers* ())
-
 (defvar *tal-tag-handlers* ())
+(defvar *string-being-compiled*)
+(defvar *name-being-compiled* ())
 
 ;;;; Interning namespaced elements to packages
 (defparameter *uri-to-package*
@@ -205,28 +206,32 @@
                              (error "Parse error in ~S. #\\ at end of string." value-string)
                              (write-char next-char text))))
                   (#\$ (let ((next-char (peek-char nil val nil nil nil)))
-			 (when next-char
-			   (cond
-			     ;; escaped $
-			     ((char= #\$ next-char)
-			      (read-char val nil nil nil)
-			      (write-char #\$ text))
+			 (if (not next-char)
+			     (error-tal-expression-eof value-string)
+			     (handler-case 
+				 (cond
+				   ;; escaped $
+				   ((char= #\$ next-char)
+				    (read-char val nil nil nil)
+				    (write-char #\$ text))
 
-			     (t ;; tal-expression
-			      (let ((bracketed? (char= #\{ next-char)))
-				;; remove open { if nec
-				(when bracketed?
-				  (read-char val nil nil nil))
-				;; first push the text uptil now onto parts
-				(let ((up-to-now (get-output-stream-string text)))
-				  (unless (string= "" up-to-now)
-				    (push up-to-now parts)))
-				;; now push the form
-				(push (if bracketed?
-					  `(progn ,@(read-tal-bracketed-form))
-					  (read-tal-form))
-				  parts))
-			      )))))
+				   (t ;; tal-expression
+				    (let ((bracketed? (char= #\{ next-char)))
+				      ;; remove open { if nec
+				      (when bracketed?
+					(read-char val nil nil nil))
+				      ;; first push the text uptil now onto parts
+				      (let ((up-to-now (get-output-stream-string text)))
+					(unless (string= "" up-to-now)
+					  (push up-to-now parts)))
+				      ;; now push the form
+				      (push (if bracketed?
+						`(progn ,@(read-tal-bracketed-form))
+						(read-tal-form))
+					    parts))
+				    ))
+			       (END-OF-FILE (e)
+				 (error-tal-expression-eof value-string e))))))
 
                   (#\@ (let ((next-char (peek-char nil val nil nil)))
                          (if (and next-char (char= #\{ next-char))
@@ -363,20 +368,26 @@
 		;; didn't find a handler for that tag or any of it's
 		;; attributes, must be a "regular" yaclml tag.
 		(handle-regular-tag tag-name attributes body)))
-	    (error "Badly formatted YACLML: ~S." form)))))
-  
+	    (error "Badly formatted TAL: ~S." form)))))
+
 (defun compile-tal-string-to-lambda (string &optional (expression-package *package*))
   "Returns the source code for the tal function form the tal text STRING."
   `(lambda (&optional -tal-environment-)
      (declare (ignorable -tal-environment-)
 	      (optimize (debug 3)))
-     ,(let ((*package* (find-package :ucw))
-	    (*expression-package* expression-package)
-	    (parse-tree (cxml:parse string
-				    (make-interner *uri-to-package*
-						   (cxml-xmls:make-xmls-builder
-						    :include-namespace-uri t)))))
-	(transform-lxml-form parse-tree))))
+     (let ((name-being-compiled ,*name-being-compiled*))
+       (handler-case	   
+	   ,(let ((*string-being-compiled* string)
+		  (*package* (find-package :ucw))
+		  (*expression-package* expression-package)
+		  (parse-tree (cxml:parse string
+					  (make-interner *uri-to-package*
+							 (cxml-xmls:make-xmls-builder
+							  :include-namespace-uri t)))))
+	      (transform-lxml-form parse-tree))
+	 (error (e)
+	   (tal-runtime-error "Compiled Tal ~s~%threw an error: ~s " name-being-compiled e))
+	 ))))
 
 (defun compile-tal-string (string &optional
 			   (expression-package (find-package :common-lisp-user)))
@@ -387,13 +398,14 @@
 
 (defun compile-tal-file (pathname &optional
 			 (expression-package (find-package :common-lisp-user)))
+  (let ((*name-being-compiled* pathname))
   (restart-case
       (with-tal-compilation-unit pathname
 	(compile-tal-string (read-tal-file-into-string pathname) expression-package))
     (retry-compile-tal-file ()
       :report (lambda (stream)
 		(format stream "Retry compiling template ~s" pathname))
-      (compile-tal-file pathname expression-package))))
+      (compile-tal-file pathname expression-package)))))
 
 (defun %call-template-with-tal-environment (tal-fn env)
   "This will call a template-fn with all the tal-environment variables
@@ -426,6 +438,15 @@
 	      (format-control c)
 	      (format-args c)))))
 
+(define-condition tal-runtime-condition (simple-condition)
+  ((format-control :accessor format-control :initarg :format-control :initform nil)
+   (format-args :accessor format-args :initarg :format-args :initform nil))
+  (:report (lambda (c s)
+	     (apply #'format
+	      s
+	      (format-control c)
+	      (format-args c)))))
+
 (define-condition tal-compilation-warning (tal-compilation-condition warning) ())
 
 (defun tal-warn (message &rest args)
@@ -436,6 +457,37 @@
 (define-condition tal-compilation-error (tal-compilation-condition error) ())
 (defun tal-error (message &rest args)
   (error (make-condition 'tal-compilation-error
+			 :format-control message
+			 :format-args args)))
+
+(defun find-expression-line/col-number (expr)
+  (with-input-from-string (s *string-being-compiled*)
+    (let ((target (search expr *string-being-compiled* :test #'char=)))
+      (when target
+	(iter (for line in-stream s using #'adwutils:dos-safe-read-line )
+	      (for line-len = (+ 1 (length line))) ;;dont forget newlines
+	      (for start-len = total-len)
+	      (summing line-len into total-len)
+	      (counting line into lines)
+	      (when (> total-len target)
+		(return #?"line: ${lines} col: ${ (- target start-len) }, line: ${line}"))
+	      )))))
+
+(define-condition tal-unexpected-eof-compilation-error (tal-compilation-error error) ())
+(defun error-tal-expression-eof (expression &optional error)
+  (let* ((loc (find-expression-line/col-number expression))
+	 (message (with-output-to-string (s)
+		    (princ "Unexpected EOF in tal expression starting with $~% Input: ~S" s)
+		    (when loc
+		      (princ "~% Estimated Location: ~a" s))
+		    (when error
+		      (princ "~% Error: ~s" s)))))
+    (error (make-condition 'tal-unexpected-eof-compilation-error
+			   :format-control message
+			   :format-args (remove nil (list expression loc error))))))
+
+(defun tal-runtime-error (message &rest args)
+  (error (make-condition 'tal-runtime-condition
 			 :format-control message
 			 :format-args args)))
 
