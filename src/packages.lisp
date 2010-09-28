@@ -48,6 +48,7 @@
            #:include
            #:in-package
 	   #:loop
+	   #:def
 	   #:dom-content))
 
 (defpackage :net.common-lisp.project.bese.tal.include-params

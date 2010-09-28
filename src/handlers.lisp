@@ -139,7 +139,6 @@ the evaluated value of the attribute is nil.
     `(unless ,value
        ,(transform-lxml-form tag))))
 
-
 (def-attribute-handler tal::let (tag)
   "ATTRUBTE-HANDLER: Extend environment with a given list of bindings,
 as for LET form.
@@ -158,8 +157,7 @@ Goes to: <div><div>3</div></div>
     (collect (list name value) into let-bindings)
     (finally
      (return
-       `(let (,@let-bindings)
-	  ,(transform-lxml-form tag))))))
+       `(let (,@let-bindings) ,(transform-lxml-form-in-scope tag))))))
 
 (def-tag-handler tal::lisp (tag)
   "TAG-HANDLER: evaluate the body of the tag as lisp code."
@@ -214,7 +212,7 @@ assuming that $efficiencies resolves to the list {foo,bar}.
 	     ,@(when idx
 		 `(for ,idx upfrom 0))
 	     append
-	  (list ,@(transform-lxml-tree tag-body))))))
+	  (list ,@(transform-lxml-tree-in-scope tag-body))))))
 
 (def-tag-handler tal:include (tag)
   "TAG-HANDLER: includes another template at this point in the file.
@@ -295,6 +293,51 @@ parameters of 'foo' and 'contents'.
 	      ,*tal-generator* ,tname
 	      (tal-env ,@(augmented-env))
 	      ))))))))
+
+(def-tag-handler tal:def (tag)
+  "TAG-HANDLER: creates an inline sub-template available for the duration
+of the templates execution.
+
+The template should be named by the tal:name attribute or by
+tal:name-expression if it should be evaluated.
+
+
+Example:
+   <tal:def tal:name='deffed-template'>
+       <div>
+         <span tal:when='$selected'>*</span>
+         <span tal:content='$label'</span>
+       </div>
+   </tal>
+
+tal:def can also be used to create string constants when used with tal:type=\"string\"
+
+Example:
+   <tal:def tal:name='deffed-string' tal:type='string'>This is my string</tal>
+
+  results in a let binding (deffed-string \"This is my string\")
+
+"
+  (let* ((template-name
+	  (or
+	   (pull-attrib-val! tag 'tal::name)
+	   (awhen (pull-attrib-val! tag 'tal::name-expression)
+	     (parse-tal-attribute-value it))
+	   (tal-error "Missing TAL:NAME and TAL:NAME-EXPRESSION tags.")))
+	 (type (pull-attrib-val! tag 'tal::type))
+	 (template-variable (intern (string-upcase template-name) *expression-package*))
+	 (*name-being-compiled*
+	  (format nil "~A:~A" *name-being-compiled* template-name)))
+    (destructure-tag (tag)
+      (let* ((body-lambda
+	      (if (string-equal type "string")
+		  (with-output-to-string (s)
+		    (iter (for part in tag-body)
+			  (princ part s)))
+		  (compile-tal-parse-tree-to-lambda tag-body *expression-package* T))))
+	(push (list template-variable body-lambda) *tal-defs*)
+	nil ;; this tag returns nothing because we push the def up to the enclosing scope
+	))))
 
 (def-attribute-handler tal::in-package (tag)
   "ATTRIBUTE-HANDLER: sets the package in which lisp evaluation

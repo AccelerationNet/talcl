@@ -24,9 +24,6 @@
 (defun %call-template-with-tal-environment (tal-fn env)
   "This will call a template-fn with all the tal-environment variables
    bound into the lisp dynamic environment."
-  
-  ;; Why first... doesnt make much sense but we seem
-  ;; to be storing the alist in a list
   (iter (for (k v . rest) on env by #'cddr)
 	(collect k into keys)
 	(collect v into values)
@@ -39,9 +36,6 @@
 (defun call-template-with-tal-environment (generator template env)
   "This will call a template with all the tal-environment variables
    bound into the lisp dynamic environment."
-  
-  ;; Why first... doesnt make much sense but we seem
-  ;; to be storing the alist in a list
   (%call-template-with-tal-environment (load-tal generator template) env))
 
 (defun tal-env (&rest pairs)

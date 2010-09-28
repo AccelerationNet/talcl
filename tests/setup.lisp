@@ -10,9 +10,10 @@
 	:bind))
 
 (in-package :talcl-test)
-
+(cl-interpol:enable-interpol-syntax)
 (eval-always
-  (deflogger talcl-test::tal-log () :appender (make-slime-repl-log-appender)))
+  (unless (get-logger 'talcl-test::tal-log)
+    (deflogger talcl-test::tal-log () :appender (make-slime-repl-log-appender))))
 
 (with-package-iterator (sym '(:talcl) :internal)
   (iter (multiple-value-bind (more? symbol accessibility pkg) (sym)
@@ -33,7 +34,7 @@
   (push (cons name fn) (tals g)))
 
 (defmethod add-tal ((g tal-test-generator) (name t) (fn string))
-  (add-tal g name (compile-tal-string fn)))
+  (add-tal g name (talcl::compile-tal-string fn)))
 
 (defmethod template-truename ((g tal-test-generator) name)
   name)
@@ -46,9 +47,9 @@
 	      (union (ensure-list (get tag :tests))
 		     (list name))))
   `(lisp-unit:define-test ,name
-     (let* ((*tal-generator* *test-generator*)
+     (let* ((talcl::*tal-generator* *test-generator*)
 	    (out (talcl::buffer-xml-output () ,@body)))
-       (tal-log.info "\nTal Test: ~S \n-------------\n~a\n-------------\n" ',name out))))
+       (tal-log.info #?"\nTal Test: ~S \n-------------\n~a\n-------------\n" ',name out))))
 
 (defun run-tests-with-debugging (&key suites tests)
   (let* ((lisp-unit::*use-debugger* T)
@@ -59,4 +60,4 @@
 		(lisp-unit::run-test-thunks
 		 (lisp-unit::get-test-thunks
 		  (if (null tests) (get-tests *package*) tests))))))
-    (tal-log.info "\n ** TEST RESULTS ** \n-----------\n~A\n------------\n" out)))
+    (tal-log.info #?"\n ** TEST RESULTS ** \n-----------\n~A\n------------\n" out)))

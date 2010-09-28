@@ -7,7 +7,7 @@
                tal:in-package=\"talcl-test\">
                ${ (assert-equal (find-package :talcl-test) *expression-package*) }
           </div>")
-	 (fn (compile-tal-string it)))
+	 (fn (talcl::compile-tal-string it)))
     (talcl::%call-template-with-tal-environment fn ())))
 
 (adwtest test-let (compile-tests)
@@ -18,7 +18,7 @@
                    ${ (assert-equal x 3) }
                   </span>
           </div>")
-	 (fn (compile-tal-string it)))
+	 (fn (talcl::compile-tal-string it)))
     (talcl::%call-template-with-tal-environment fn ())))
 
 (adwtest test-left-to-right-attrib-eval (compile-tests)
@@ -31,7 +31,7 @@
                tal:let=\"lst (list 1 2 3 4 5) test 0\">
                   ${ (assert-equal (length lst) 5) }
           </div>")
-	 (fn (compile-tal-string it)))
+	 (fn (talcl::compile-tal-string it)))
     (talcl::%call-template-with-tal-environment fn ())))
 
 (adwtest test-loop (compile-tests)
@@ -44,7 +44,7 @@
                    ${ (assert-equal val (incf test)) }
                   </tal:loop>
           </div>")
-	 (fn (compile-tal-string it)))
+	 (fn (talcl::compile-tal-string it)))
     (talcl::%call-template-with-tal-environment fn ())))
 
 (adwtest test-constant-loop (compile-tests)
@@ -57,7 +57,7 @@
                    ${ (assert-equalp val (princ-to-string (incf test))) }
                   </tal:loop>
           </div>")
-	 (fn (compile-tal-string it)))
+	 (fn (talcl::compile-tal-string it)))
     (talcl::%call-template-with-tal-environment fn ())))
 
 (adwtest test-test-generator (compile-meta-tests compile-test)
@@ -66,7 +66,7 @@
                tal:in-package=\"talcl-test\">
                ${ (assert-true T \"This is just so we can be sure this ran\") }
           </div>")
-	 (fn (compile-tal-string it)))
+	 (fn (talcl::compile-tal-string it)))
     (add-tal *test-generator* "test" fn)
     (talcl:call-template-with-tal-environment *test-generator* "test" ())))
 
@@ -157,8 +157,8 @@
                tal:in-package=\"talcl-test\"
                tal:let=\"x 1 y 'second z 'third\"
           >$value$$value${value}$$(dont-eval)</div>")
-	 (fn1 (compile-tal-string t1))
-	 (fn2 (compile-tal-string t2))
+	 (fn1 (talcl::compile-tal-string t1))
+	 (fn2 (talcl::compile-tal-string t2))
 	 (out1 (talcl::buffer-xml-output ()
 		 (talcl::%call-template-with-tal-environment fn1 (tal-env 'value 1))))
 	 (out2 (talcl::buffer-xml-output ()
@@ -179,8 +179,8 @@
                tal:in-package=\"talcl-test\"
                foo=\"$value\" bar=\"$$value\" bast=\"${value}\"
                brocolli=\"$$(dont-eval)\" />")
-	 (fn1 (compile-tal-string t1))
-	 (fn2 (compile-tal-string t2))
+	 (fn1 (talcl::compile-tal-string t1))
+	 (fn2 (talcl::compile-tal-string t2))
 	 (out1 (talcl::buffer-xml-output ()
 		 (talcl::%call-template-with-tal-environment fn1 (tal-env 'value 1))))
 	 (out2 (talcl::buffer-xml-output ()
@@ -189,3 +189,33 @@
     (assert-equalp out1 out2)
     ))
 
+(adwtest test-def (compile-tests)
+  (let* ((it "<div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+                   tal:in-package=\"talcl-test\"
+                   tal:let=\"y 3\">
+                 <tal:def tal:name=\"test-def\">
+                    <span tal:let=\"x 3\">
+                     ${ (assert-equal x y) }
+                    </span>
+                 </tal:def>
+                 ${ (assert-true test-def) }
+                 ${ test-def }
+                 ${ test-def }
+          </div>")
+	 (fn (talcl::compile-tal-string it)))
+    (talcl::%call-template-with-tal-environment fn ())))
+
+(adwtest test-def-string (compile-tests)
+  (let* ((it "<div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+                   tal:in-package=\"talcl-test\"
+                   tal:let=\"y 3\">
+                 <tal:def tal:name=\"test-def\" tal:type=\"string\">
+                    This is a string full of text, not some stupid xml yuck
+                 </tal:def>
+                 <tal:def tal:name=\"test-def2\" tal:type=\"string\">Yippie</tal:def>
+                 ${ (assert-true (stringp test-def)) }
+                 ${ (assert-true (stringp test-def2)) }
+                 ${ (assert-equalp test-def2 \"Yippie\") }
+          </div>")
+	 (fn (talcl::compile-tal-string it)))
+    (talcl::%call-template-with-tal-environment fn ())))

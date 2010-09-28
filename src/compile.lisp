@@ -341,7 +341,6 @@
 	       (setf element-form `(cxml:with-namespace ,p
 				     ,element-form)))
 	     element-form))))
-    
     (if (stringp form)
 	(let ((forms (parse-tal-body-content form)))
 	  forms)
@@ -369,32 +368,62 @@
 		(handle-regular-tag tag-name attributes body)))
 	    (error "Badly formatted TAL: ~S." form)))))
 
+;; this is used to pass variables up to the enclosing scope
+;; from lower in the tal tree, (ie def tags)
+(defvar *tal-defs*)
+
+(defun transform-lxml-form-in-scope ( form )
+  "Creates a new scope (ie: for def) and processes a form inside it"
+  (let* (*tal-defs*
+	 (processed-body (transform-lxml-form form)))
+    (if *tal-defs*
+	`(let (,@*tal-defs*) ,processed-body)
+	processed-body)  
+    ))
+
+(defun transform-lxml-tree-in-scope ( tree )
+  "Creates a new scope (ie: for def) and processes a tree of children inside it"
+  (let* (*tal-defs*
+	 (processed-body (transform-lxml-tree tree)))
+    (if *tal-defs*
+	`(let (,@*tal-defs*) ,processed-body)
+	processed-body)
+    ))
+
+(defun compile-tal-parse-tree-to-lambda (parse-tree
+					 &optional (expression-package *package*)
+					 tree-or-forms? )
+  (let* ((*package* (find-package :talcl))
+	 (*expression-package* expression-package))
+    `(lambda (&optional -tal-environment-) ;; Just used for debugging at this point
+       (declare (ignorable -tal-environment-))
+       ;; lexically bind the name being compiled so it can be included in error messages
+       (let ((name-being-compiled ,*name-being-compiled*)) 
+	 (handler-case
+	     ,(if tree-or-forms?
+		  `(progn ,@(transform-lxml-tree-in-scope parse-tree) )
+		  (transform-lxml-form-in-scope parse-tree))
+	   ;; Put more information on errors thrown from compiled tal functions
+	   (error (e)
+	     (tal-runtime-error "Compiled Tal ~s~%threw an error: ~a " name-being-compiled e))
+	   )))))
+
 (defun compile-tal-string-to-lambda (string &optional (expression-package *package*))
   "Returns the source code for the tal function form the tal text STRING."
-  `(lambda (&optional -tal-environment-);; Just used for debugging at this point
-     (declare (ignorable -tal-environment-)
-	      (optimize (debug 3)))
-     ;; lexically bind the name being compiled so it can be included in error messages
-     (let ((name-being-compiled ,*name-being-compiled*)) 
-       (handler-case	   
-	   ,(let ((*string-being-compiled* string)
-		  (*package* (find-package :ucw))
-		  (*expression-package* expression-package)
-		  (parse-tree (cxml:parse string
-					  (make-interner *uri-to-package*
-							 (cxml-xmls:make-xmls-builder
-							  :include-namespace-uri t)))))
-	      (transform-lxml-form parse-tree))
-	 ;; Put more information on errors thrown from compiled tal functions
-	 (error (e)
-	   (tal-runtime-error "Compiled Tal ~s~%threw an error: ~s " name-being-compiled e))
-	 ))))
+  (let* ((*string-being-compiled* string)
+	 (*package* (find-package :talcl))
+	 (*expression-package* expression-package)
+	 (parse-tree (cxml:parse string
+				 (make-interner *uri-to-package*
+						(cxml-xmls:make-xmls-builder
+						 :include-namespace-uri t))))) 
+    (compile-tal-parse-tree-to-lambda parse-tree expression-package)))
 
 (defun compile-tal-string (string &optional
 			   (expression-package (find-package :common-lisp-user)))
   (let* ((*break-on-signals* nil)
 	 (lamb (compile-tal-string-to-lambda string expression-package)))
-    ;; (break "~S" lamb)
+    ;(break "~S" lamb)
     (compile nil lamb)))
 
 (defun compile-tal-file (pathname &optional
