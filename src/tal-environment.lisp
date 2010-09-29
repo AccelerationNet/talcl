@@ -20,6 +20,19 @@
    (ignore-errors (read-string-from-file pathname :external-format :ascii))
    (error "Failed to load template content in utf-8, latin-1 or ascii ~a" pathname)))
 
+(defmacro with-this-sink ((sink) &body body)
+  `(let ((cxml::*sink* ,sink)
+	 (cxml::*current-element* nil)
+	 (cxml::*unparse-namespace-bindings* cxml::*initial-namespace-bindings*)
+	 (cxml::*current-namespace-bindings* nil))
+     ,@body
+     ))
+
+(defun buffered-template-call ( template-function env)
+  (let ((sink (make-instance 'buffering-sink :buffering T)))
+    (with-this-sink (sink)
+      (talcl::%call-template-with-tal-environment template-function env)
+      sink)))
 
 (defun %call-template-with-tal-environment (tal-fn env)
   "This will call a template-fn with all the tal-environment variables

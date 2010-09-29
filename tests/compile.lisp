@@ -122,12 +122,13 @@
 	   "<div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
                    tal:in-package=\"talcl-test\">
                 This is included content ${ (incf *test-count*) }, param:${value}
-                <div class=\"content\" tal:content=\"value\" />
+                <span class=\"content\" tal:content=\"value\" >${ (assert-true nil) }</span>
                 <tal:tal tal:replace=\"value\" />
-                ${ (assert-true (typep value 'function))
+                ${ (assert-true (typep value 'buffering-sink ))
                    (assert-true (%test-include-body-name
                                  *test-count*
-                                 (talcl::buffer-xml-output () (funcall value))))
+                                 (talcl::buffer-xml-output ()
+                                    (stop-buffering-and-flush value cxml::*sink*))))
                  }
             </div>")
   (add-tal *test-generator* "test"
@@ -144,6 +145,30 @@
   (talcl:call-template-with-tal-environment *test-generator* "test" ())
   (assert-equal *test-count* 3
 		"We included 3 times so we should have incf'ed 3 times"))
+
+
+(adwtest test-include-param-body-side-effects (compile-tests)
+  (setf *test-count* 0)
+  (add-tal *test-generator* "basic"
+	   "<div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+                   tal:in-package=\"talcl-test\">
+                ${ (assert-equal *test-count* 1) }
+                This is included content param:${value}
+                <div class=\"content\" tal:content=\"value\" />
+                <tal:tal tal:replace=\"value\" />
+            </div>")
+  (add-tal *test-generator* "test"
+	   "<div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+                 xmlns:param=\"http://common-lisp.net/project/bese/tal/params\"
+                 tal:in-package=\"talcl-test\"
+                 tal:let=\"pname2 'second pname3 'third\">
+               <tal:include tal:name=\"basic\" >
+                  <param:value>${(incf *test-count*)}</param:value>
+               </tal:include>
+           </div>")
+  (talcl:call-template-with-tal-environment *test-generator* "test" ())
+  (assert-equal *test-count* 1
+		"We included 1 time so we should have incf'ed 3 times"))
 
 (adwtest test-tal/lisp-escaping-body ()
   "Test tal expressions in body areas"
@@ -195,7 +220,7 @@
                    tal:let=\"y 3\">
                  <tal:def tal:name=\"test-def\">
                     <span tal:let=\"x 3\">
-                     ${ (assert-equal x y) }
+                     Test is: ${ (assert-equal x y) }
                     </span>
                  </tal:def>
                  ${ (assert-true test-def) }

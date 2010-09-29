@@ -1,13 +1,5 @@
 (in-package :talcl)
 
-(defmacro with-this-sink ((sink) &body body)
-  `(let ((cxml::*sink* ,sink)
-	 (cxml::*current-element* nil)
-	 (cxml::*unparse-namespace-bindings* cxml::*initial-namespace-bindings*)
-	 (cxml::*current-namespace-bindings* nil))
-     ,@body
-     ))
-
 (defclass template-processing-sink (cxml:broadcast-handler) ())
 
 (defun make-template-processing-sink (&rest handlers)
@@ -31,24 +23,19 @@
 (defun tal-processing-instruction (generator template-name env)
   "Make a tal-processing-instruction. It's a dom node that when processed
 will insert the template in the sax stream."
-  (flet ((template-node-fn ()
-	   (let ((sink (make-instance 'buffering-sink :buffering T)))
-	     (with-this-sink (sink)
-	       (talcl::call-template-with-tal-environment generator template-name env)
-	       sink))))
-    (let ((tn (make-instance 'template-node
-			     :owner buildnode:*document*
-			     :target :tal
-			     :data (template-node-fn)
-			     )))
-      tn)))
+  (make-instance
+   'template-node
+   :owner buildnode:*document*
+   :target :tal
+   :data (buffered-template-call (load-tal generator template-name) env)
+   ))
 
-(defvar *template-sink*)
+
 (defun dom-walk-helper (tree)
-  (cxml:with-output-sink (*template-sink*)
+  (cxml:with-output-sink (cxml::*sink*)
     (loop for n in (arnesi:ensure-list tree)
 	  do (typecase n
 	       (string (cxml:text n))
 	       (list (dom-walk-helper n))
-	       (dom:node (dom:walk *template-sink* n))))))
+	       (dom:node (dom:walk cxml::*sink* n))))))
 

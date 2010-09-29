@@ -90,7 +90,7 @@ Gets output as:
 		      ;; or t or whatever)
 		      (read-tal-expression-from-string escape)
 		      ;; no value supplied, default to T
-		      t)))
+		      t)))	
 	`(%emit-tagged-content ,value ,escape)))))
 
 
@@ -112,6 +112,11 @@ Gets output as:
 		(cxml:unescaped value)))
     (dom:node (dom-walk-helper value))
     (function (funcall value escape))
+    (buffering-sink
+       ;; makes sure our sink is ready by flushing
+       ;; delayed events
+       (cxml:with-output-sink (cxml::*sink*)
+	 (stop-buffering-and-flush value cxml::*sink*)))
     (list
        (case (first value)
 	 (eval (eval (second value)))
@@ -266,17 +271,12 @@ parameters of 'foo' and 'contents'.
 		(declare (ignore attributes))
 		(if (eql (find-package :tal.include-params)
 			 (symbol-package param-name))
-		    ;; this used to be evaluated into a string 
-		    ;;`(with-output-to-string (*yaclml-stream*)
-		    ;;   ,@(mapcar #'transform-lxml-form body))
-		     
-		    ;;but now we're just returning the
-		    ;; cxml code snippet, which may
-		    ;; result in some weird enviornment
-		    ;; collisions.
 		    (augmented-env
 		     (var param-name)
-		     `(lambda (&optional escape) ,@(mapcar #'transform-lxml-form body)))
+		     `(buffered-template-call
+		       ,(compile-tal-parse-tree-to-lambda
+			 body *expression-package* T)
+		       -tal-environment-))
 		    (tal-warn "Ignoring body tag in TAL:INCLUDE: ~S." param-name)))))
 	  ;; 3) GO!
 	  ;; TODO: Figure out the generator logic and make sure this still works.
@@ -334,7 +334,10 @@ Example:
 		  (with-output-to-string (s)
 		    (iter (for part in tag-body)
 			  (princ part s)))
-		  (compile-tal-parse-tree-to-lambda tag-body *expression-package* T))))
+		  `(buffered-template-call
+		       ,(compile-tal-parse-tree-to-lambda
+			 tag-body *expression-package* T)
+		       -tal-environment-))))
 	(push (list template-variable body-lambda) *tal-defs*)
 	nil ;; this tag returns nothing because we push the def up to the enclosing scope
 	))))

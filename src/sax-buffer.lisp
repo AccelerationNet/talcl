@@ -19,6 +19,9 @@
 	(apply fn (or output-sink o) args))
   ;; Set buffering to nil after flusing, so that we can use
   ;; that flag to not double buffer
+  (setf (flushing o) nil))
+
+(defmethod clear-buffer ((o buffering-sink))
   (setf (buffer o) nil))
 
 (macrolet ((define-proxy-method (name (&rest args))
