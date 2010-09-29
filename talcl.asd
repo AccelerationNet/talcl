@@ -4,13 +4,14 @@
   :version "0.2"
   :components
   ((:module :src
+	    :serial T
 	    :components ((:file "packages")
-			 (:file "tal-environment" :depends-on ("packages"))
-			 (:file "compile" :depends-on ("packages" "tal-environment"))
-			 (:file "generator" :depends-on ("packages" "compile"))
-			 (:file "handlers" :depends-on ("packages" "compile")
-				:depends-on ("packages" "compile" "dom"))
-			 (:file "dom" :depends-on ("packages" "compile")))
+			 (:file "tal-environment")
+			 (:file "sax-buffer")
+			 (:file "compile")
+			 (:file "dom")
+			 (:file "generator")
+			 (:file "handlers"))
 	    ))
   :depends-on (:buildnode :cxml :iterate :arnesi :adwcodebase))
 
