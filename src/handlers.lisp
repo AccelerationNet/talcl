@@ -5,17 +5,17 @@
 ;;;; * Standard TAL handlers
 
 (defmacro buffer-xml-output (() &body body)
-  "xml parameters like <param:foo><div>bar</div></param:foo>
-   need to be processed and their output buffered for insertion
-   into included templates
+  "buffers out sax:events to a sting
+
+   xml parameters like <param:foo param:type=\"string\"><div>bar</div></param:foo>
+   need are requested to be strings (presumably for string processing)
   "
   (with-unique-names (out-str)
     `(with-output-to-string (,out-str)
        (let ((cxml::*sink* (cxml::make-character-stream-sink ,out-str))
 	     (cxml::*current-element* nil)
 	     (cxml::*unparse-namespace-bindings* cxml::*initial-namespace-bindings*)
-	     (cxml::*current-namespace-bindings* nil)
-	     (cxml::*om))
+	     (cxml::*current-namespace-bindings* nil))
 	 (setf (cxml::sink-omit-xml-declaration-p cxml::*sink*) T)
 	 (sax:start-document cxml::*sink*)
 	 ,@body  
@@ -268,16 +268,24 @@ parameters of 'foo' and 'contents'.
 	  (dolist (child tag-body)
 	    (unless (stringp child)
 	      (destructuring-bind (param-name attributes &rest body) child
-		(declare (ignore attributes))
+		
+		(let ((type (or (cadr (find 'tal.include-params::type attributes
+					    :key #'first))
+				(cadr (find 'tal::type attributes
+					    :key #'first)))))
 		(if (eql (find-package :tal.include-params)
 			 (symbol-package param-name))
 		    (augmented-env
 		     (var param-name)
-		     `(buffered-template-call
-		       ,(compile-tal-parse-tree-to-lambda
-			 body *expression-package* T)
-		       -tal-environment-))
-		    (tal-warn "Ignoring body tag in TAL:INCLUDE: ~S." param-name)))))
+		     (cond
+		       ((and type (string-equal type "string"))
+			`(buffer-xml-output () ,@(transform-lxml-tree body)))
+		       (t
+			`(buffered-template-call
+			  ,(compile-tal-parse-tree-to-lambda
+			    body *expression-package* T)
+			  -tal-environment-))))
+		    (tal-warn "Ignoring body tag in TAL:INCLUDE: ~S." param-name))))))
 	  ;; 3) GO!
 	  ;; TODO: Figure out the generator logic and make sure this still works.
 	  (with-unique-names (tname)

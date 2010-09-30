@@ -146,6 +146,49 @@
   (assert-equal *test-count* 3
 		"We included 3 times so we should have incf'ed 3 times"))
 
+(adwtest test-include-param-body-as-string (compile-tests)
+  (setf *test-count* 0)
+  (add-tal *test-generator* "basic"
+	   "<div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+                   tal:in-package=\"talcl-test\">
+                 $(assert-true (stringp value))
+                 $(assert-equal value \"valuable-value\")
+            </div>")
+  (add-tal *test-generator* "test"
+	   "<div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+                 xmlns:param=\"http://common-lisp.net/project/bese/tal/params\"
+                 tal:in-package=\"talcl-test\">
+               <tal:include tal:name=\"basic\" >
+                 <param:value param:type=\"string\">valuable-value</param:value>
+               </tal:include>
+               <tal:include tal:name=\"basic\" >
+                 <param:value tal:type=\"string\">valuable-value</param:value>
+               </tal:include>
+           </div>")
+  (talcl:call-template-with-tal-environment *test-generator* "test" ()))
+
+(defvar *test-answer*)
+(adwtest test-include-param-body-as-string2 (compile-tests)
+  (setf *test-count* 0
+	*test-answer* "<div><span>valuable-value</span></div>")
+  
+  (add-tal *test-generator* "basic"
+	   "<div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+                   tal:in-package=\"talcl-test\">
+                 $(assert-true (stringp value))
+                 $(assert-equal value *test-answer*)
+                  $value
+            </div>")
+  (add-tal *test-generator* "test"
+	   "<div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+                 xmlns:param=\"http://common-lisp.net/project/bese/tal/params\"
+                 tal:in-package=\"talcl-test\">
+               <tal:include tal:name=\"basic\" >
+                 <param:value param:type=\"string\"><div><span>valuable-value</span></div></param:value>
+               </tal:include>
+           </div>")
+  (talcl:call-template-with-tal-environment *test-generator* "test" ()))
+
 
 (adwtest test-include-param-body-side-effects (compile-tests)
   (setf *test-count* 0)
