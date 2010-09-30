@@ -339,9 +339,7 @@ Example:
     (destructure-tag (tag)
       (let* ((body-lambda
 	      (if (string-equal type "string")
-		  (with-output-to-string (s)
-		    (iter (for part in tag-body)
-			  (princ part s)))
+		  `(buffer-xml-output () ,@(transform-lxml-tree tag-body))
 		  `(buffered-template-call
 		       ,(compile-tal-parse-tree-to-lambda
 			 tag-body *expression-package* T)
