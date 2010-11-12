@@ -368,13 +368,13 @@ tal-environment where this tag was encountered"
 	(princ " TAL Env (searched top to bottom) : " out)
 	(format out "~%*expression-package*: ~a" ,*expression-package*)
 	(format out "~%===========================")
-	(dolist (bind-set -tal-environment-)
-	  (loop for (key . data) in bind-set
-		do
-	     (format out "~%~15a : ~s" key data))
-	  (format out "~%=========================="))
-	(terpri out))
-      ))
+	(loop for bind-set on -tal-environment- by #'cddr
+	      for key = (first bind-set)
+	      for data = (second bind-set)
+	      do
+	   (format out "~%~15a : ~s" key data))
+	(format out "~%===========================")
+	(terpri out))))
 
 (def-tag-handler tal::print-handlers (tag)
   "TAG-HANDLER: Lists (in a comment) the tag and attribute handlers
