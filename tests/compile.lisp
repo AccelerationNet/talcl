@@ -287,3 +287,16 @@
           </div>")
 	 (fn (talcl::compile-tal-string it)))
     (talcl::%call-template-with-tal-environment fn ())))
+
+
+(adwtest test-tal/print-env (smoke-tests)
+  "Run print-env handler"  
+  (tal-log.info "~%Out1:~s~%~%out2:~s"
+		(talcl::buffer-xml-output ()
+		  (talcl::%call-template-with-tal-environment
+		   (talcl::compile-tal-string "
+          <div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+               tal:in-package=\"talcl-test\"><tal:print-env />
+${ (assert-true T) }
+</div>")
+		   (tal-env 'value 1)))))
