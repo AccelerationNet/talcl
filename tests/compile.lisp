@@ -291,7 +291,7 @@
 
 (adwtest test-tal/print-env (smoke-tests)
   "Run print-env handler"  
-  (tal-log.info "~%Out1:~s~%~%out2:~s"
+  (tal-log.info "print-env output:~%~s"
 		(talcl::buffer-xml-output ()
 		  (talcl::%call-template-with-tal-environment
 		   (talcl::compile-tal-string "
