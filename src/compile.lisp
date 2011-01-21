@@ -387,9 +387,66 @@
 	 (processed-body (transform-lxml-tree tree)))
     (if *tal-defs*
 	`(let (,@*tal-defs*) ,processed-body)
-	processed-body)
-    ))
+	processed-body)))
 
+(defun call-lambda-with-unbound-variable-restarts (lambda)
+  "When you enconter an unbound variable while executing a template function,
+    provide a restart to bind that variable so that the template can be executed
+
+   see also: call-lambda-with-default-missing-value
+      which will invoke this restart with *default-missing-template-value*
+      if there is one
+  "
+  (let ( unbound-vars unbound-vals missing )
+    (labels ((read-new-value ()
+	       (format t "Enter a new value: ")
+	       (multiple-value-list (eval (read))))
+	     (try-run ()
+	       (restart-case 
+		   (progv unbound-vars unbound-vals 
+		     (handler-bind
+			 ;; If we encounter an unbound variable
+			 ;; bind missing (for use in the restart) and allow the error
+			 ;; to bubble
+			 ((unbound-variable
+			   (lambda (c) (setf missing (cell-error-name c))))
+			  (tal-runtime-condition
+			   (lambda (c)
+			     (when (typep (original-error c) 'unbound-variable)
+			       (setf missing (cell-error-name (original-error c)))))))
+		       (funcall lambda)))
+		 (set-value (val)
+		   ;; after setting the unbound variable rerun the template function
+		   :report (lambda (s) (format s "Set A Value for ~A" missing))
+		   :interactive read-new-value
+		   (push missing unbound-vars)
+		   (push val unbound-vals)
+		   (try-run)))))
+      (try-run))))
+
+(defvar *default-missing-template-value*)
+;; A default value to splice in whenever you encounter an unbound variable
+
+(defun call-lambda-with-default-missing-value (lambda)
+  "If you encounter an unbound template variable and we have a
+   *default-missing-template-value*, invoke the set-value restart with
+   that default
+
+   see also: call-lambda-with-default-missing-value which sets up the restart
+  "
+  (flet ((invoke-it ()
+	   (when (and (boundp '*default-missing-template-value*)
+		      (find-restart 'set-value))
+	     (invoke-restart 'set-value *default-missing-template-value*))))
+    (handler-bind
+	((unbound-variable
+	  (lambda (c) (declare (ignore c))
+	    (invoke-it)))
+	 (tal-runtime-condition
+	  (lambda (c)
+	    (when (typep (original-error c) 'unbound-variable)     
+	      (invoke-it)))))
+      (call-lambda-with-unbound-variable-restarts lambda))))
 
 (defun compile-tal-parse-tree-to-lambda (parse-tree
 					 &optional (expression-package *package*)
@@ -400,15 +457,21 @@
        (declare (ignorable -tal-environment-))
        ;; lexically bind the name being compiled so it can be included in error messages
        (let ((name-being-compiled ,*name-being-compiled*)) 
-	 (handler-bind
-	     ;; Put more information on errors thrown from compiled tal functions
-	     ((error #'(lambda (e)
-			 (tal-runtime-error
-			  "Compiled Tal ~s~%threw an error: ~a "
-			  name-being-compiled e))))
-	   ,(if tree-or-forms?
-		`(progn ,@(transform-lxml-tree-in-scope parse-tree) )
-		(transform-lxml-form-in-scope parse-tree)))))))
+	 (flet ((body ()
+		  (handler-bind
+		      ;; Put more information on errors thrown from compiled tal functions
+		      ;; so that when deeply nested templates throw an error
+		      ;; you can track down which template it originated in
+		      ((error #'(lambda (e)
+				  (tal-runtime-error
+				   e
+				   "Compiled Tal ~s~%threw an error: ~a "
+				   name-being-compiled e))))
+		    ,(if tree-or-forms?
+			 `(progn ,@(transform-lxml-tree-in-scope parse-tree) )
+			 (transform-lxml-form-in-scope parse-tree)))))
+	   (call-lambda-with-default-missing-value #'body)
+	   )))))
 
 (defun compile-tal-string-to-lambda (string &optional (expression-package *package*))
   "Returns the source code for the tal function form the tal text STRING."
@@ -450,7 +513,8 @@
 
 (define-condition tal-runtime-condition (simple-condition)
   ((format-control :accessor format-control :initarg :format-control :initform nil)
-   (format-args :accessor format-args :initarg :format-args :initform nil))
+   (format-args :accessor format-args :initarg :format-args :initform nil)
+   (original-error :accessor original-error :initarg :original-error :initform nil))
   (:report (lambda (c s)
 	     (apply #'format
 	      s
@@ -496,8 +560,9 @@
 			   :format-control message
 			   :format-args (remove nil (list expression loc error))))))
 
-(defun tal-runtime-error (message &rest args)
+(defun tal-runtime-error (original-error message &rest args)
   (error (make-condition 'tal-runtime-condition
+			 :original-error original-error
 			 :format-control message
 			 :format-args args)))
 

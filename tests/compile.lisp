@@ -16,14 +16,38 @@
 (adwtest test-whitespace2 (compile-tests whitespace-tests)
   (let* ((it "<div class=\"welcome frontPageMenu\"
                xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
-               tal:in-package=\"talcl-test\">${test} should have whitespace after</div>")
+               tal:in-package=\"talcl-test\">This ${test} should have whitespace after</div>")
 	 (fn (talcl::compile-tal-string it))
 	 (out (buffer-xml-output ()
-		(talcl::%call-template-with-tal-environment fn '(test "This test")))))
+		(talcl::%call-template-with-tal-environment fn '(test "new test")))))
     (assert-true
-     (search "This test should have whitespace after" out :test #'char=)
+     (search "This new test should have whitespace after" out :test #'char=)
      out)
     ))
+
+(adwtest test-missing-value (runtime-tests missing-values)
+  (let* ((it "<div class=\"welcome frontPageMenu\"
+               xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+               tal:in-package=\"talcl-test\">Test that $test should be missing</div>")
+	 (fn (talcl::compile-tal-string it)))
+
+    (assert-error
+     'talcl::tal-runtime-condition
+     (buffer-xml-output ()
+       (talcl::%call-template-with-tal-environment fn '())))))
+
+(adwtest test-missing-value2 (runtime-tests missing-values)
+  (let* ((it "<div class=\"welcome frontPageMenu\"
+               xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+               tal:in-package=\"talcl-test\">Test that $test should be missing</div>")
+	 (fn (talcl::compile-tal-string it)))
+
+    (let* ((talcl::*default-missing-template-value* "<MISSING>")
+	   (out (buffer-xml-output ()
+		  (talcl::%call-template-with-tal-environment fn '()))))
+      (assert-true
+       (search "Test that <MISSING> should be missing" out :test #'char=)
+       out))))
 
 (adwtest test-in-package (compile-tests)
   (let* ((it "<div class=\"welcome frontPageMenu\"
