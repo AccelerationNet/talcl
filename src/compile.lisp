@@ -390,6 +390,7 @@
 	processed-body)
     ))
 
+
 (defun compile-tal-parse-tree-to-lambda (parse-tree
 					 &optional (expression-package *package*)
 					 tree-or-forms? )
@@ -399,14 +400,15 @@
        (declare (ignorable -tal-environment-))
        ;; lexically bind the name being compiled so it can be included in error messages
        (let ((name-being-compiled ,*name-being-compiled*)) 
-	 (handler-case
-	     ,(if tree-or-forms?
-		  `(progn ,@(transform-lxml-tree-in-scope parse-tree) )
-		  (transform-lxml-form-in-scope parse-tree))
-	   ;; Put more information on errors thrown from compiled tal functions
-	   (error (e)
-	     (tal-runtime-error "Compiled Tal ~s~%threw an error: ~a " name-being-compiled e))
-	   )))))
+	 (handler-bind
+	     ;; Put more information on errors thrown from compiled tal functions
+	     ((error #'(lambda (e)
+			 (tal-runtime-error
+			  "Compiled Tal ~s~%threw an error: ~a "
+			  name-being-compiled e))))
+	   ,(if tree-or-forms?
+		`(progn ,@(transform-lxml-tree-in-scope parse-tree) )
+		(transform-lxml-form-in-scope parse-tree)))))))
 
 (defun compile-tal-string-to-lambda (string &optional (expression-package *package*))
   "Returns the source code for the tal function form the tal text STRING."
