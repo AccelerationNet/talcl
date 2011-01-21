@@ -8,7 +8,7 @@
   "buffers out sax:events to a sting
 
    xml parameters like <param:foo param:type=\"string\"><div>bar</div></param:foo>
-   need are requested to be strings (presumably for string processing)
+       are requested to be strings (presumably for string processing)
   "
   (with-unique-names (out-str)
     `(with-output-to-string (,out-str)

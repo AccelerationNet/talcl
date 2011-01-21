@@ -195,7 +195,7 @@
                  (let ((*readtable* (copy-readtable nil))
                        (*package* *expression-package*))
 		   (set-macro-character #\$ #'|$ tal reader| nil *readtable*)
-		   (read val))))
+		   (read-preserving-whitespace val))))
           (loop
              for char = (read-char val nil nil)
              while char

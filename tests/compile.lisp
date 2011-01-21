@@ -1,6 +1,30 @@
 (in-package :talcl-test)
 (cl-interpol:enable-interpol-syntax)
 
+(adwtest test-whitespace (compile-tests whitespace-tests)
+  (let* ((it "<div class=\"welcome frontPageMenu\"
+               xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+               tal:in-package=\"talcl-test\">$test should have whitespace after</div>")
+	 (fn (talcl::compile-tal-string it))
+	 (out (buffer-xml-output ()
+		(talcl::%call-template-with-tal-environment fn '(test "This test")))))
+    (assert-true
+     (search "This test should have whitespace after" out :test #'char=)
+     out)
+    ))
+
+(adwtest test-whitespace2 (compile-tests whitespace-tests)
+  (let* ((it "<div class=\"welcome frontPageMenu\"
+               xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+               tal:in-package=\"talcl-test\">${test} should have whitespace after</div>")
+	 (fn (talcl::compile-tal-string it))
+	 (out (buffer-xml-output ()
+		(talcl::%call-template-with-tal-environment fn '(test "This test")))))
+    (assert-true
+     (search "This test should have whitespace after" out :test #'char=)
+     out)
+    ))
+
 (adwtest test-in-package (compile-tests)
   (let* ((it "<div class=\"welcome frontPageMenu\"
                xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"

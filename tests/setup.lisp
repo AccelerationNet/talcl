@@ -52,13 +52,19 @@
 	    (out (talcl::buffer-xml-output () ,@body)))
        (tal-log.info #?"\nTal Test: ~S \n-------------\n~a\n-------------\n" ',name out))))
 
-(defun run-tests-with-debugging (&key suites tests)
+(defun run-tests-with-debugging (&key tests suites)
   (let* ((lisp-unit::*use-debugger* T)
 	 (tests (append (ensure-list tests)
 			(iter (for suite in (ensure-list suites))
 			      (appending (get suite :tests)))))
-	 (out (with-output-to-string (lisp-unit::*lisp-unit-stream*)
-		(lisp-unit::run-test-thunks
-		 (lisp-unit::get-test-thunks
-		  (if (null tests) (get-tests *package*) tests))))))
-    (tal-log.info #?"\n ** TEST RESULTS ** \n-----------\n~A\n------------\n" out)))
+	 (out (with-output-to-string (s)
+		(let ((lisp-unit::*lisp-unit-stream*
+		       (make-broadcast-stream
+			s
+			(if (eql t lisp-unit::*lisp-unit-stream*)
+			    *standard-output*
+			    lisp-unit::*lisp-unit-stream*))))
+		  (lisp-unit::run-test-thunks
+		   (lisp-unit::get-test-thunks
+		    (if (null tests) (get-tests *package*) tests)))))))
+    (tal-log.info #?"\n ** TEST RESULTS ** \n-----------\n${out}\n------------\n")))
