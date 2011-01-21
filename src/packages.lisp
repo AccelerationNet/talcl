@@ -21,6 +21,7 @@
    #:pull-attrib-val!
    #:tal-env
    #:call-template-with-tal-environment
+   #:run-template
    #:destructure-tag
    #:tag-name
    #:tag-attributes
