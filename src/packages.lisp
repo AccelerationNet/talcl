@@ -22,6 +22,7 @@
    #:tal-env
    #:call-template-with-tal-environment
    #:run-template
+   #:run-template-fn
    #:destructure-tag
    #:tag-name
    #:tag-attributes
@@ -29,6 +30,8 @@
    #:tal-runtime-condition
    #:set-value ;; restart
    #:with-missing-value-handler
+   #:compile-tal-string
+   #:compile-tal-file
 
    ;; dom stuff
    #:template-processing-sink

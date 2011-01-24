@@ -56,6 +56,11 @@
   (buffer-xml-output ()
     (call-template-with-tal-environment generator template env)))
 
+(defun run-template-fn ( fn env )
+  "Runs a tal template returning the string produced"
+  (buffer-xml-output ()
+    (%call-template-with-tal-environment fn env)))
+
 (defun tal-env (&rest pairs)
   "Creates a fresh tal environment from the plist PAIRS."
   ;; currently just an alias for list
