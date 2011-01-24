@@ -49,6 +49,23 @@
        (search "Test that <MISSING> should be missing" out :test #'char=)
        out))))
 
+(adwtest test-missing-value3 (runtime-tests missing-values)
+  (let* ((it "<div class=\"welcome frontPageMenu\"
+               xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+               tal:in-package=\"talcl-test\">Test that $test should be missing</div>")
+	 (fn (talcl::compile-tal-string it)))
+
+    (let* ((out (with-missing-value-handler
+		    ((name)
+		     (assert-equal 'test name)
+		     "<MISSING>")
+		  (buffer-xml-output ()
+		    (talcl::%call-template-with-tal-environment fn '()))
+		  )))
+      (assert-true
+       (search "Test that <MISSING> should be missing" out :test #'char=)
+       out))))
+
 (adwtest test-in-package (compile-tests)
   (let* ((it "<div class=\"welcome frontPageMenu\"
                xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"

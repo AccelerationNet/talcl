@@ -26,6 +26,9 @@
    #:tag-name
    #:tag-attributes
    #:tag-body
+   #:tal-runtime-condition
+   #:set-value ;; restart
+   #:with-missing-value-handler
 
    ;; dom stuff
    #:template-processing-sink

@@ -396,6 +396,9 @@
    see also: call-lambda-with-default-missing-value
       which will invoke this restart with *default-missing-template-value*
       if there is one
+
+   see also: with-missing-value-handler which shortcuts the rather tedious
+      handler-bind for this into a bare minimum handler
   "
   (let ( unbound-vars unbound-vals missing )
     (labels ((read-new-value ()
@@ -427,26 +430,46 @@
 (defvar *default-missing-template-value*)
 ;; A default value to splice in whenever you encounter an unbound variable
 
+(defmacro with-missing-value-handler (((&optional name) &body handler-body) &body body)
+  "Provides error handler that will handle filling unbound variable
+   references with a value
+
+   handler can be (() ... body ) or ((name) ... body)
+    the return value of handler will be the value inserted in place of the missing value
+    If you provide name, it will be bound to the name of the unbound variable for the
+    duration of the handler
+
+   see call-lambda-with-default-missing-value for an example of use "
+  (with-unique-names (handler uvar)
+    (let ((var (or name uvar)))
+      `(flet ((,handler (,var) (declare (ignorable ,var))
+		,@handler-body))
+	 (handler-bind
+	     ((unbound-variable
+	       (lambda (c)
+		 (when (find-restart 'talcl:set-value)
+		   (invoke-restart 'talcl:set-value
+				   (funcall #',handler (cell-error-name c))))))
+	      (talcl:tal-runtime-condition
+	       (lambda (c)
+		 (when (and (typep (original-error c) 'unbound-variable)
+			    (find-restart 'talcl:set-value))
+		   (invoke-restart 'talcl:set-value
+				   (funcall #',handler (cell-error-name
+							(original-error c))))))))
+	   ,@body)))))
+
 (defun call-lambda-with-default-missing-value (lambda)
   "If you encounter an unbound template variable and we have a
    *default-missing-template-value*, invoke the set-value restart with
    that default
 
    see also: call-lambda-with-default-missing-value which sets up the restart
-  "
-  (flet ((invoke-it ()
-	   (when (and (boundp '*default-missing-template-value*)
-		      (find-restart 'set-value))
-	     (invoke-restart 'set-value *default-missing-template-value*))))
-    (handler-bind
-	((unbound-variable
-	  (lambda (c) (declare (ignore c))
-	    (invoke-it)))
-	 (tal-runtime-condition
-	  (lambda (c)
-	    (when (typep (original-error c) 'unbound-variable)     
-	      (invoke-it)))))
-      (call-lambda-with-unbound-variable-restarts lambda))))
+  "  
+  (if (boundp '*default-missing-template-value*)
+      (with-missing-value-handler (() *default-missing-template-value*)
+	(call-lambda-with-unbound-variable-restarts lambda))
+      (call-lambda-with-unbound-variable-restarts lambda)))
 
 (defun compile-tal-parse-tree-to-lambda (parse-tree
 					 &optional (expression-package *package*)
