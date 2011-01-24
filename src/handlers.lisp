@@ -4,24 +4,6 @@
 
 ;;;; * Standard TAL handlers
 
-(defmacro buffer-xml-output (() &body body)
-  "buffers out sax:events to a sting
-
-   xml parameters like <param:foo param:type=\"string\"><div>bar</div></param:foo>
-       are requested to be strings (presumably for string processing)
-  "
-  (with-unique-names (out-str)
-    `(with-output-to-string (,out-str)
-       (let ((cxml::*sink* (cxml::make-character-stream-sink ,out-str))
-	     (cxml::*current-element* nil)
-	     (cxml::*unparse-namespace-bindings* cxml::*initial-namespace-bindings*)
-	     (cxml::*current-namespace-bindings* nil))
-	 (setf (cxml::sink-omit-xml-declaration-p cxml::*sink*) T)
-	 (sax:start-document cxml::*sink*)
-	 ,@body  
-	 (sax:end-document cxml::*sink*)))))
-
-
 (defun intern-tal-string (s)
   (intern (string-upcase s) *expression-package*))
 
