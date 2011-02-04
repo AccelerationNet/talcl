@@ -213,7 +213,8 @@ The environment can be extended by including attributes in the
 parameter namespace, or immediate children in the parameter namespace.
 
 Example:
-   <tal:include name='other-template.tal' param:foo='foo'>
+   <tal:include tal:name-expression='$tal-name' param:foo='foo' />
+   <tal:include tal:name='other-template.tal' param:foo='foo'>
      <param:contents>
        <div>
          <span tal:when='$selected'>*</span>
