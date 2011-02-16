@@ -14,7 +14,7 @@
 (defmethod stop-buffering-and-flush ((o buffering-sink) &optional output-sink)
   (setf (flushing o) T
 	(buffering o) nil)
-  (iter (for (fn . args) in (buffer o))
+  (iter (for (fn . args) in (reverse (buffer o)))
 	;; if we have
 	(apply fn (or output-sink o) args))
   ;; Set buffering to nil after flusing, so that we can use
@@ -28,9 +28,7 @@
 	       `(defmethod ,name ((handler buffering-sink) ,@args)
 		  (if (and (buffering handler)
 			   (not (flushing handler)))
-		      (setf (buffer handler)
-			    (append (buffer handler)
-				    (list (list #',name ,@args))))
+		      (push (list #',name ,@args) (buffer handler))
 		      (call-next-method)))))
   (define-proxy-method sax:start-document ())
   (define-proxy-method sax:start-element (uri lname qname attributes))
