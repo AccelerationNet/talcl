@@ -302,45 +302,47 @@
 	   (find-handler-named (first attr))))
 
        (handle-regular-tag (tag-name attributes body)
-	 (unless (member tag-name '(:comment :xml))
-	   (let* ((namespaces nil)
-		  (buildnode:*namespace-prefix-map*
-		   buildnode:*namespace-prefix-map*)
-		  (attrib-forms
-		   (flet ((add-ns (prefix ns)
-			    (push (list prefix ns) namespaces)
-			    (push (cons ns prefix)
-				  buildnode:*namespace-prefix-map*)
-			    nil))
-		     (loop
-		       for (key pre-value) in attributes
-		       for value = (if (stringp pre-value)
-				       (parse-tal-attribute-value pre-value)
-				       pre-value)
-		       append (if (consp key)
-				  (destructuring-bind (lname . ns) key
-				    ;; is it an xmlns attrb?
-				    (if (string= ns
-						 "http://www.w3.org/2000/xmlns/")
-					(add-ns lname value)
-					`((cxml:attribute*
-					   ,(buildnode::get-prefix ns)
-					   ,lname
-					   ,value))))
-				  `((cxml:attribute* nil ,key ,value))))))
-		  (element-form `(cxml:with-element*
-				     (,(and (consp tag-name)
-					    (buildnode::get-prefix
-					     (cdr tag-name)))
-				       ,(if (consp tag-name)
-					    (car tag-name)
-					    tag-name))
-				   ,@attrib-forms
-				   ,@(transform-lxml-tree body))))
-	     (dolist (p namespaces)
-	       (setf element-form `(cxml:with-namespace ,p
-				     ,element-form)))
-	     element-form))))
+	 (case tag-name
+	   (:comment `(cxml:comment ,(first body)))
+	   (:xml)
+	   (T (let* ((namespaces nil)
+		     (buildnode:*namespace-prefix-map*
+		      buildnode:*namespace-prefix-map*)
+		     (attrib-forms
+		      (flet ((add-ns (prefix ns)
+			       (push (list prefix ns) namespaces)
+			       (push (cons ns prefix)
+				     buildnode:*namespace-prefix-map*)
+			       nil))
+			(loop
+			  for (key pre-value) in attributes
+			  for value = (if (stringp pre-value)
+					  (parse-tal-attribute-value pre-value)
+					  pre-value)
+			  append (if (consp key)
+				     (destructuring-bind (lname . ns) key
+				       ;; is it an xmlns attrb?
+				       (if (string= ns
+						    "http://www.w3.org/2000/xmlns/")
+					   (add-ns lname value)
+					   `((cxml:attribute*
+					      ,(buildnode::get-prefix ns)
+					      ,lname
+					      ,value))))
+				     `((cxml:attribute* nil ,key ,value))))))
+		     (element-form `(cxml:with-element*
+					(,(and (consp tag-name)
+					       (buildnode::get-prefix
+						(cdr tag-name)))
+					  ,(if (consp tag-name)
+					       (car tag-name)
+					       tag-name))
+				      ,@attrib-forms
+				      ,@(transform-lxml-tree body))))
+		(dolist (p namespaces)
+		  (setf element-form `(cxml:with-namespace ,p
+					,element-form)))
+		element-form)))))
     (if (stringp form)
 	(let ((forms (parse-tal-body-content form)))
 	  forms)
@@ -503,8 +505,8 @@
 	 (*expression-package* expression-package)
 	 (parse-tree (cxml:parse string
 				 (make-interner *uri-to-package*
-						(cxml-xmls:make-xmls-builder
-						 :include-namespace-uri t))))) 
+						(make-extended-xmls-builder
+						 :include-namespace-uri t)))))
     (compile-tal-parse-tree-to-lambda parse-tree expression-package)))
 
 (defun compile-tal-string (string &optional

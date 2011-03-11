@@ -1,5 +1,23 @@
 (in-package :talcl)
 
+(defclass extended-xmls-builder (cxml-xmls::xmls-builder)
+  ()
+  (:documentation "an xmls builder that includes comments as (:comment () comment-text) nodes"))
+
+(defun make-extended-xmls-builder (&key (include-default-values t)
+				   (include-namespace-uri t))
+  "Make a XMLS style builder.  When 'include-namespace-uri is true a modified
+  XMLS tree is generated that includes the element namespace URI rather than
+  the qualified name prefix and also includes the namespace URI for attributes."
+  (make-instance 'extended-xmls-builder
+		 :include-default-values include-default-values
+		 :include-namespace-uri include-namespace-uri))
+
+(defmethod sax:comment ((handler extended-xmls-builder) data)
+  (let* ((parent (car (cxml-xmls::element-stack handler)))
+	 (node (list :comment () data)))
+    (push node (cxml-xmls::node-children parent))))
+
 (defclass buffering-sink (cxml:broadcast-handler)
   ((buffering :accessor buffering :initarg :buffering :initform nil
 	      :documentation "Is this currently buffering")

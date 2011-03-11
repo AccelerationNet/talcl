@@ -1,6 +1,19 @@
 (in-package :talcl-test)
 (cl-interpol:enable-interpol-syntax)
 
+(adwtest test-comment (compile-tests)
+  (let* ((comment "<!-- Awesome Comment -->")
+	 (it #?"<div class=\"welcome frontPageMenu\"
+               xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+               tal:in-package=\"talcl-test\">A Comment:${comment}END</div>")
+	 (fn (talcl::compile-tal-string it))
+	 (out (buffer-xml-output ()
+		(talcl::%call-template-with-tal-environment fn '()))))
+    (assert-true
+     (search comment out :test #'char=)
+     out)
+    ))
+
 (adwtest test-whitespace (compile-tests whitespace-tests)
   (let* ((it "<div class=\"welcome frontPageMenu\"
                xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
