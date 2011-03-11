@@ -72,19 +72,22 @@ Gets output as:
 		      ;; or t or whatever)
 		      (read-tal-expression-from-string escape)
 		      ;; no value supplied, default to T
-		      t)))	
+		      t)))
 	`(%emit-tagged-content ,value ,escape)))))
 
 
 (define-compiler-macro %emit-tagged-content (&whole form value &optional escape)
-  (if (not (and (constantp value) (constantp escape)))
-      form
-      (typecase value
-	(null nil)
-	(string (if escape
-		    `(cxml:text ,value)
-		    `(cxml:unescaped ,value)))
-	(T form))))
+  (typecase value
+    (null nil)
+    (string
+       (if (constantp escape)
+           (if escape
+               `(cxml:text ,value)
+               `(cxml:unescaped ,value))
+           `(if ,escape
+                (cxml:text ,value)
+                (cxml:unescaped ,value))))
+    (T form)))
 
 (defun %emit-tagged-content (value &optional escape)
   (typecase value
