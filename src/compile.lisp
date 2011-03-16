@@ -71,6 +71,9 @@
 (defvar *string-being-compiled*)
 (defvar *name-being-compiled* ())
 
+(defvar *talable-strings* T
+  "Whether or not to treat regular attributes and contents as talable strings.")
+
 ;;;; Interning namespaced elements to packages
 (defparameter *uri-to-package*
   (list 
@@ -182,6 +185,8 @@
 (defun parse-talable-string (value-string)
   "Parser a TAL attribute expression, returns a form for building
   the expression at run time."
+  (unless *talable-strings*
+    (return-from parse-talable-string (list value-string)))
   (let ((parts '()))
     (with-input-from-string (val value-string)
       (with-output-to-string (text)

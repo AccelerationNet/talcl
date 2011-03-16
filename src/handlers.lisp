@@ -10,6 +10,16 @@
 (def-tag-handler tal::tal (tag)
   `(progn ,@(transform-lxml-tree (cddr tag))))
 
+(def-tag-handler tal::without-reader (tag)
+  (let ((*talable-strings* nil))
+    `(progn ,@(transform-lxml-tree (cddr tag)))))
+
+(def-attribute-handler tal::talable-strings (tag)
+  (destructure-tag (tag tal::talable-strings)
+    (let ((*talable-strings* (read-tal-expression-from-string tal::talable-strings)))
+      (transform-lxml-form
+       `(,tag-name ,tag-attributes ,@tag-body)))))
+
 (def-attribute-handler tal::content (tag)
   "ATTRIBUTE-HANDLER:
 Replaces the content of the tag with the evaluated value of the
