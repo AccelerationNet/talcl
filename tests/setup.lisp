@@ -13,7 +13,7 @@
 (cl-interpol:enable-interpol-syntax)
 (eval-always
   (unless (get-logger 'talcl-test::tal-log)
-    (deflogger talcl-test::tal-log () :appender (make-slime-repl-log-appender))))
+    (deflogger talcl-test::tal-log () :appender (arnesi:make-slime-repl-log-appender))))
 
 (with-package-iterator (sym '(:talcl) :internal)
   (iter (multiple-value-bind (more? symbol accessibility pkg) (sym)

@@ -378,3 +378,22 @@
 ${ (assert-true T) }
 </div>")
 		   (tal-env 'value 1)))))
+
+
+(adwtest test-other-ns-passthrough (compile-tests)
+  (let* ((it "<div class=\"welcome frontPageMenu\"
+               xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\">
+<foo:bar xmlns:foo=\"http://foo.bar/\"><foo:baz foo:data=\"jack\">hahaha</foo:baz></foo:bar>
+</div>")
+	 (fn (talcl::compile-tal-string it))
+	 (out (buffer-xml-output ()
+		(talcl::%call-template-with-tal-environment fn nil))))
+    (assert-true
+     (search "xmlns:foo=\"http://foo.bar/\"" out :test #'char=)
+     out)
+    (assert-true
+     (search "foo:data=\"jack\"" out :test #'char=)
+     out)
+    (assert-true
+     (search "hahaha</foo:baz>" out :test #'char=)
+     out)))

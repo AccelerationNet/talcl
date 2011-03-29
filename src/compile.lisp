@@ -153,6 +153,11 @@
 	    ,@body)
 	  (pushnew ',tag-name *tal-tag-handlers*)))
 
+(defun find-handler-named (name)
+  (when (and (symbolp name)
+             (fboundp name))
+    (symbol-function name)))
+
 (defun |$ tal reader| (stream char)
   "The $ char reader for tal expressions.
    This just tries to smooth over inconsistancies encountered by using
@@ -294,88 +299,75 @@
 	    (transform-lxml-form form))
 	  tree))
 
+
+
 (defun transform-lxml-form (form)
   "Transforms the lxml tree FORM into common lisp code (a series
   of calls to tag macros)."
-  (labels
-      ((find-handler-named (name)
-	 (awhen (and (symbolp name)
-		     (fboundp name) )
-	   (return-from transform-lxml-form
-	     (funcall (symbol-function name) form))))
+  (typecase form
+    (string (parse-tal-body-content form))
+    (cons (destructuring-bind (tag-name attributes &rest body) form
+            ;; the cxml parser reverses attribute order, which
+            ;; is problematic.  Reverse these so that tal produces
+            ;; the expected output
+            (let ((attributes (reverse attributes)))
+              ;; first see if there are any attribute handlers
+              (dolist (attr attributes)
+                (awhen (find-handler-named (first attr))
+                  (return-from transform-lxml-form
+                    (funcall it form))))
 
-       (find-attribute-handlers (attributes)
-	 (dolist (attr attributes)
-	   (find-handler-named (first attr))))
+              ;; first see if there's a handler for this tag
+              (aif (find-handler-named tag-name)
+                   (funcall it form)
+                   ;; didn't find a handler for that tag or any of it's
+                   ;; attributes, must be a "regular" tag.
+                   (transform-lxml-regular-tag tag-name attributes body)))))
+    (t (error "Badly formatted TAL: ~S." form))))
 
-       (handle-regular-tag (tag-name attributes body)
-	 (case tag-name
-	   (:comment `(cxml:comment ,(first body)))
-	   (:xml)
-	   (T (let* ((namespaces nil)
-		     (buildnode:*namespace-prefix-map*
-		      buildnode:*namespace-prefix-map*)
-		     (attrib-forms
-		      (flet ((add-ns (prefix ns)
-			       (push (list prefix ns) namespaces)
-			       (push (cons ns prefix)
-				     buildnode:*namespace-prefix-map*)
-			       nil))
-			(loop
-			  for (key pre-value) in attributes
-			  for value = (if (stringp pre-value)
-					  (parse-tal-attribute-value pre-value)
-					  pre-value)
-			  append (if (consp key)
-				     (destructuring-bind (lname . ns) key
-				       ;; is it an xmlns attrb?
-				       (if (string= ns
-						    "http://www.w3.org/2000/xmlns/")
-					   (add-ns lname value)
-					   `((cxml:attribute*
-					      ,(buildnode::get-prefix ns)
-					      ,lname
-					      ,value))))
-				     `((cxml:attribute* nil ,key ,value))))))
-		     (element-form `(cxml:with-element*
-					(,(and (consp tag-name)
-					       (buildnode::get-prefix
-						(cdr tag-name)))
-					  ,(if (consp tag-name)
-					       (car tag-name)
-					       tag-name))
-				      ,@attrib-forms
-				      ,@(transform-lxml-tree body))))
-		(dolist (p namespaces)
-		  (setf element-form `(cxml:with-namespace ,p
-					,element-form)))
-		element-form)))))
-    (if (stringp form)
-	(let ((forms (parse-tal-body-content form)))
-	  forms)
-	(if (consp form)
-	    (destructuring-bind (name attributes &rest body) form
-	      ;; the cxml parser reverses attribute order, which
-	      ;; is problematic.  Reverse these so that tal produces
-	      ;; the expected output
-	      (let ((attributes (reverse attributes))
-		    (tag-name
-		     (if (consp name)	; (name . namespace)
-			 (let ((pkg (cdr (assoc (cdr name) *uri-to-package*
-						:test #'string=))))
-			   (if pkg
-			       (intern (string-upcase (car name)) pkg)
-			       name))
-			 name)))
-		
-		;; first see if there are any attribute handlers
-		(find-attribute-handlers attributes)
-		;; first see if there's a handler for this tag
-		(find-handler-named tag-name)
-		;; didn't find a handler for that tag or any of it's
-		;; attributes, must be a "regular" yaclml tag.
-		(handle-regular-tag tag-name attributes body)))
-	    (error "Badly formatted TAL: ~S." form)))))
+
+(defun transform-lxml-regular-tag (tag-name attributes body)
+  (case tag-name
+    (:comment `(cxml:comment ,(first body)))
+    (:xml)
+    (T (let* ((namespaces nil)
+              (buildnode:*namespace-prefix-map* buildnode:*namespace-prefix-map*)
+              (attrib-forms
+               (flet ((add-ns (prefix ns)
+                        (push (list prefix ns) namespaces)
+                        (push (cons ns prefix)
+                              buildnode:*namespace-prefix-map*)
+                        nil))
+                 (loop
+                   for (key pre-value) in attributes
+                   for value = (if (stringp pre-value)
+                                   (parse-tal-attribute-value pre-value)
+                                   pre-value)
+                   collect (if (consp key)
+                               (destructuring-bind (lname . ns) key
+                                 ;; is it an xmlns attrb?
+                                 (if (string= ns "http://www.w3.org/2000/xmlns/")
+                                     (add-ns lname value)
+                                     `(cxml:attribute*
+                                       ,(buildnode::get-prefix ns)
+                                       ,lname
+                                       ,value)))
+                               `(cxml:attribute* nil ,key ,value)))))
+              ;;the attrib-forms must be done ahead of this so
+              ;;that get-prefix can lookup in the ammended
+              ;;namespace-prefix-map
+              (tag-name-spec (if (consp tag-name)
+                                 (destructuring-bind (lname . ns) tag-name
+                                   `(,(buildnode::get-prefix ns) ,lname))
+                                 `(nil ,tag-name)))
+              (element-form `(cxml:with-element* ,tag-name-spec
+                               ,@attrib-forms
+                               ,@(transform-lxml-tree body))))
+         (dolist (p namespaces)
+           (setf element-form `(cxml:with-namespace ,p
+                                 ,element-form)))
+         element-form))
+    ))
 
 ;; this is used to pass variables up to the enclosing scope
 ;; from lower in the tal tree, (ie def tags)
