@@ -49,10 +49,24 @@ ELSE will be executed."
   bound to the result of TEST in BODY."
   `(when-bind it ,test ,@body))
 
+(defmacro with-input-from-file ((stream-name file-name &rest args &key
+                                             (direction nil direction-provided-p)
+                                             (external-format :default)
+                                             &allow-other-keys)
+                                &body body)
+  "Evaluate BODY with STREAM-NAME bound to an
+  input-stream from file FILE-NAME. ARGS is passed
+  directly to open."
+  (declare (ignore direction external-format))
+  (when direction-provided-p
+    (error "Can't specifiy :DIRECTION in WITH-INPUT-FILE."))
+  `(with-open-file (,stream-name ,file-name :direction :input 
+                    ,@args)
+     ,@body))
 
 (defun read-string-from-file (pathname &key (buffer-size 4096)
                                             (element-type 'character)
-                                            (external-format :us-ascii))
+                                            (external-format :default))
   "Return the contents of PATHNAME as a fresh string.
 
 The file specified by PATHNAME will be read one ELEMENT-TYPE
@@ -62,8 +76,8 @@ compatible.
 The EXTERNAL-FORMAT parameter will be passed to
 ENCODING-KEYWORD-TO-NATIVE, see ENCODING-KEYWORD-TO-NATIVE to
 possible values."
-  (with-input-from-file
-      (file-stream pathname :external-format (encoding-keyword-to-native external-format))
+  (arnesi:with-input-from-file
+      (file-stream pathname :external-format external-format)
     (with-output-to-string (datum) 
       (let ((buffer (make-array buffer-size :element-type element-type)))
 	(loop for bytes-read = (read-sequence buffer file-stream)
@@ -170,6 +184,7 @@ are discarded \(that is, the body is an implicit PROGN)."
 (defun read-tal-file-into-string (pathname)
   (or
    (ignore-errors (read-string-from-file pathname :external-format :utf-8))
+   (ignore-errors (read-string-from-file pathname :external-format :utf8))
    (ignore-errors (read-string-from-file pathname :external-format :latin-1))
    (ignore-errors (read-string-from-file pathname :external-format :ascii))
    (error "Failed to load template content in utf-8, latin-1 or ascii ~a" pathname)))
