@@ -395,6 +395,18 @@ attribute tal:name"
 	  (describe ',name)))
       )))
 
+(def-tag-handler tal::describe-handlers (tag)
+  "TAG-HANDLER: Describes (in an comment), all tags and attribute handlers that are known
+   (in *tal-attribute-handlers* or *tal-tag-handlers*)"
+  (declare (ignore tag))
+  (let ((*read-eval* nil))
+    `(cxml:comment
+      (with-output-to-string (*standard-output*)
+	(iter (for name in ',(append *tal-tag-handlers* *tal-attribute-handlers*))
+	      (terpri)
+	      (describe name)
+	      )))))
+
 
 
 ;; Code added Copyright (c) 2010, Accelerated Data Works

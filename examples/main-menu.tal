@@ -1,0 +1,10 @@
+<div tal:in-package="talcl"
+     xmlns:tal="http://common-lisp.net/project/bese/tal/core"
+     id="$dom-id">
+  <ul>
+    <tal:loop tal:var="i" tal:constant-list="1,2,3,4,5">
+      <li><a href="" title="$i menu item">Item $i</a></li>
+    </tal:loop>
+  </ul>
+  $other-content
+</div>

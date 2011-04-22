@@ -30,7 +30,6 @@ will insert the template in the sax stream."
    :data (buffered-template-call (load-tal generator template-name) env)
    ))
 
-
 (defun dom-walk-helper (tree)
   (cxml:with-output-sink (cxml::*sink*)
     (loop for n in (ensure-list tree)
@@ -38,4 +37,18 @@ will insert the template in the sax stream."
 	       (string (cxml:text n))
 	       (list (dom-walk-helper n))
 	       (dom:node (dom:walk cxml::*sink* n))))))
+
+(defun make-output-sink (stream &key canonical indentation (char-p T))
+  (make-template-processing-sink
+   (buildnode:make-output-sink
+    stream :canonical canonical :indentation indentation :char-p char-p)))
+
+(defun document-to-stream ( doc stream )
+  (let ((sink (talcl::make-output-sink stream)))
+    (buildnode::write-normalized-document-to-sink doc sink)))
+
+(defun document-to-string ( doc )
+  (with-output-to-string (s)
+    (document-to-stream doc s)))
+
 

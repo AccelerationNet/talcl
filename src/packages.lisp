@@ -32,11 +32,13 @@
    #:with-missing-value-handler
    #:compile-tal-string
    #:compile-tal-file
+   #:FIND-FILE-IN-DIRECTORIES
 
    ;; dom stuff
    #:template-processing-sink
    #:make-template-processing-sink
    #:tal-processing-instruction
+
    ))
 
 (eval-when (:load-toplevel :execute :compile-toplevel)
@@ -61,3 +63,5 @@
 (defpackage :net.common-lisp.project.bese.tal.include-params
   (:use)
   (:nicknames :tal.include-params))
+
+(pushnew :talcl *features*)

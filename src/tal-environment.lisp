@@ -176,9 +176,11 @@ displaced array pointing to the sequence after PREFIX."
 		nil))))
 
 (defun find-file-in-directories (name root-directories)
-  "Find the given name in a list of directories, ensuring that the
-  resulting file is actually contained in those directories;
-  i.e. prevent escaping the bounds via ../../../"
+  "Find the given name in a list of directories
+
+   For security if the roots are absolute, ensure that the resulting
+   file is actually contained in those directories
+   i.e. prevent escaping the bounds via ../../../"
   (let* ((name (pathname name))
 	 (dir-list (pathname-directory name))
 	 (rel-p (or (null dir-list)
@@ -189,16 +191,25 @@ displaced array pointing to the sequence after PREFIX."
       ;;absolute name for missing file
       (return-from find-file-in-directories nil))
 
-    (dolist (root root-directories)
-      (let ((root (pathname root)))
+    (dolist (root (ensure-list root-directories))
+      (let ((root (pathname root))
+	    (root-dirs (pathname-directory root)))
 	(if rel-p
 	    (let ((merged (eliminate-..-in-path
 			   (merge-pathnames name root))))
+	      
 	      (awhen (probe-file merged)
 		;;found a file, now check that it is in the roots. 
 		(return-from find-file-in-directories
-		  (find-file-in-directories merged root-directories))))
-	    (when (starts-with dir-list (pathname-directory root) :test #'equal)
+		  (find-file-in-directories it root-directories))))
+	    
+	    ;; we have an absolute file path, if root is absolute, we
+	    ;; should verify that the file is rooted in this directory
+	    ;; if the root is relative, assume we did stuff correctly
+	    ;; above
+	    
+	    (when (or (not (eql :absolute (car root-dirs)))
+		      (starts-with dir-list root-dirs :test #'equal))
 	      (return-from find-file-in-directories (probe-file name))))))))
 
 ;;;;;;;;;;;;;;; END BASIC UTILS

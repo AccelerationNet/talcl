@@ -1,0 +1,32 @@
+<html tal:in-package="talcl"
+      xmlns:tal="http://common-lisp.net/project/bese/tal/core"
+      xmlns:param="http://common-lisp.net/project/bese/tal/params">
+  <head>
+    <title tal:content="$page-title" />
+  </head>
+  <body>
+    <div id="page" >
+      <div id="$header-dom-id" >
+	<h1 >$page-title</h1>
+	<tal:include tal:name="main-menu.tal" param:dom-id="nav-dom-id" >
+	  <param:other-content>
+	    <span>A snippet of html to pass through</span>
+	  </param:other-content>
+	</tal:include>
+	<div class="killfloat"></div>
+      </div>
+      <div id="contentBg">
+	$escaped-html-string
+	<tal:tal tal:content-as-is="unescaped-html-string" />
+	<div class="content-body" tal:content="$body"/>
+	<div class="kill-float"></div>
+      </div><!-- contentBg -->
+      <div id="footer">
+	<tal:tal tal:content="$(example-footer-menu)" />
+	<div class="killfloat"></div>
+      </div>
+    </div><!-- page -->
+  </body>
+  <!-- descriptions -->
+  <tal:describe-handlers />
+</html>
