@@ -1,6 +1,12 @@
-<html tal:in-package="talcl"
-      xmlns:tal="http://common-lisp.net/project/bese/tal/core"
-      xmlns:param="http://common-lisp.net/project/bese/tal/params">
+<html 
+   tal:in-package="talcl"
+   xmlns:tal="http://common-lisp.net/project/bese/tal/core"
+   xmlns:param="http://common-lisp.net/project/bese/tal/params"
+   tal:let="true-value t false-value nil"
+   > 
+  <tal:def tal:name="my-new-sub">
+    <h4>This sub template can be reused all over the place</h4>
+  </tal:def>
   <head>
     <title tal:content="$page-title" />
   </head>
@@ -8,16 +14,39 @@
     <div id="page" >
       <div id="$header-dom-id" >
 	<h1 >$page-title</h1>
+
+	<!-- these are equivalent ways to execute some lisp
+	     and splice its result into the template -->
+	<tal:lisp>(format nil "*** ~A ***" page-title)</tal:lisp>
+	$(format nil "### ~A ###" page-title)
+	<tal:lisp>(format nil "*** ~A ***" page-title)
+	  (format nil "||| ~A |||" page-title)</tal:lisp>
+	<span tal:when="$true-value">Dollars signs *may* be elided in tal attributes</span>
+	<span tal:when="true-value">Should be in the output</span>
+	<span tal:when="false-value">Should never appear in the output</span>
+	
+	$my-new-sub
+
 	<tal:include tal:name="main-menu.tal" param:dom-id="nav-dom-id" >
 	  <param:other-content>
 	    <span>A snippet of html to pass through</span>
+	    <!-- tal:tal tags are replaced by their content-->
+	    <tal:tal tal:content="my-new-sub" />
+
+	    <!-- tal:replace removes the tag it is on and puts its 
+		 content in the dom instead-->
+	    <span tal:replace="my-new-sub" />
 	  </param:other-content>
 	</tal:include>
+
+
+
 	<div class="killfloat"></div>
       </div>
       <div id="contentBg">
-	$escaped-html-string
+	<tal:tal tal:content="$escaped-html-string" />
 	<tal:tal tal:content-as-is="unescaped-html-string" />
+	${unescaped-html-string}
 	<div class="content-body" tal:content="$body"/>
 	<div class="kill-float"></div>
       </div><!-- contentBg -->

@@ -161,7 +161,10 @@ Goes to: <div><div>3</div></div>
 
 (def-tag-handler tal::lisp (tag)
   "TAG-HANDLER: evaluate the body of the tag as lisp code."
-  (read-tal-expression-from-string (first (third tag))))
+  (let ((body (first (cddr tag))))
+    `(%emit-tagged-content
+      ,(read-tal-expression-from-string body T))
+    ))
 
 (def-tag-handler tal::loop (tag)
   "TAG-HANDLER: Loop across a list and repeat the children. On each

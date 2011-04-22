@@ -1,9 +1,19 @@
 (in-package :talcl)
 
+;; This file builds html dom nodes for the examples so make sure
+;; we have that package available
+
+(asdf:oos 'asdf:load-op :buildnode-xhtml)
+
+;; Generators help locate templates files on disk, this one
+;; will locate files for the system in the "examples" dir
+
 (defvar *example-generator*
   (make-instance 'talcl:file-system-generator
 		 :root-directories (list (asdf:system-relative-pathname
 					  :talcl #p"examples/"))))
+
+;; an example of building a dom snippet, to be spliced into the template
 
 (defun example-footer-menu ()
   (xhtml:ul ()
@@ -11,8 +21,10 @@
 	  (for name = (format nil "~D footer list item" i))
 	  (collect (xhtml:li `(:title ,name) name )))))
 
+;; This will print out the 
+
 (defun process-example-window-to-string ()
-  (let (;;(NET.ACCELERATION.BUILDNODE:*HTML-COMPATIBILITY-MODE* T)
+  (let ((net.acceleration.buildnode:*html-compatibility-mode* t)
 	(doc (buildnode:with-html-document
 	       (tal-processing-instruction
 		*example-generator* "window.tal"
