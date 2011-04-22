@@ -141,6 +141,40 @@ are discarded \(that is, the body is an implicit PROGN)."
                             `(let (,,@temps)
                                ,,@body))))))
 
+(defun eliminate-..-in-path (name)
+  (let* ((name (pathname name))
+	 (dir-list (pathname-directory name))
+	 (output nil))
+    (iter (generate el in dir-list)
+	  (case (next el)
+	    (:up (pop output))
+	    (t (push el output))))
+    (make-pathname :directory (nreverse output)
+		   :defaults name)))
+
+(defun starts-with (sequence prefix &key (test #'eql) (return-suffix nil))
+  "Test whether the first elements of SEQUENCE are the same (as
+  per TEST) as the elements of PREFIX.
+
+If RETURN-SUFFIX is T the functions returns, as a second value, a
+displaced array pointing to the sequence after PREFIX."
+  (let ((length1 (length sequence))
+        (length2 (length prefix)))
+    (when (< length1 length2)
+      (return-from starts-with (values nil nil)))
+    (dotimes (index length2)
+      (when (not (funcall test (elt sequence index) (elt prefix index)))
+        (return-from starts-with (values nil nil))))
+    ;; if we get here then we match
+    (values t
+            (if return-suffix
+                (make-array (- (length sequence) (length prefix))
+                            :element-type (array-element-type sequence)
+                            :displaced-to sequence
+                            :displaced-index-offset (length prefix)
+                            :adjustable nil)
+		nil))))
+
 (defun find-file-in-directories (name root-directories)
   "Find the given name in a list of directories, ensuring that the
   resulting file is actually contained in those directories;
