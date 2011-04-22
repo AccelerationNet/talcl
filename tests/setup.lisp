@@ -1,16 +1,11 @@
 
-  (defpackage :net.acceleration.talcl-test
+(defpackage :net.acceleration.talcl-test
     (:nicknames :talcl-test)
   (:use :common-lisp
 	:iterate
 	:talcl
 	:lisp-unit
-	:buildnode
-
-	:net.acceleration.utils
-	:it.bese.arnesi
-	
-	))
+	:buildnode))
 
 (in-package :talcl-test)
 

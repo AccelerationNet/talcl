@@ -76,7 +76,7 @@ compatible.
 The EXTERNAL-FORMAT parameter will be passed to
 ENCODING-KEYWORD-TO-NATIVE, see ENCODING-KEYWORD-TO-NATIVE to
 possible values."
-  (arnesi:with-input-from-file
+  (with-input-from-file
       (file-stream pathname :external-format external-format)
     (with-output-to-string (datum) 
       (let ((buffer (make-array buffer-size :element-type element-type)))
