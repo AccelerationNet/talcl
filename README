@@ -1,0 +1,64 @@
+= TALCL: A libary that implements the TAL template language for common lisp =
+
+This library is a significant branch of the TAL implementation found in arnesi / ucw
+
+== Primary Goals ==
+ * To make working with templates (particularly XML/HTML) simple and
+   support designer type folks working on them.
+
+ * To be more flexible, easier to use, easier to debug, and with more
+   helpful error messages than the original TAL from arnesi and ucw.
+   TAL now has a single execution environment (the common lisp env)
+   rather than its own private tal environment.
+
+ * integrate well with cxml dom & our buildnode library.  We want to
+   be able to embed template content into our dom document in an 
+   efficient manner.  Currently these are stored as processing 
+   instructions in the dom, and in serialization we play out the sax
+   events we buffered when processing the template
+
+== Changes From Arnesi / UCW tal ==
+ * A single environment (tal environment is used only to pass values as 
+   parameters); TAL processing occurs in the standard common lisp runtime.
+   TAL package determines what is currently available.
+
+ * Fixed inconsistencies about "$var" in non tal tags vs "var" in tal
+   tags. $var should now work everywhere whether or not the tag or
+   attribute is tal
+
+ * tal expression strings work in the body of a tag as well as
+   attributes
+
+ * $$ escapes to a single $ sign
+ * $ evaluates one expression 
+  * $var and ${var} returns the value of the var
+  * $(some-fn var) - calls some-fn with the value of var in the current
+    package / env and splices the return into the doc
+  * ${nil} doesnt print anything
+
+ * DOM nodes and lists / vectors of dom-nodes can be spliced into the
+   template EG: <span>$some-dom-content</span> will correctly put the
+   dom content into the template
+
+
+;;;; Copyright (C) 2011 Acceleration.net, Russ Tyndall
+;;;;   email: bobbysmith007@gmail.com
+;;;;
+;;;; This program is free software: you can redistribute it and/or modify
+;;;; it under the terms of the GNU Lesser General Public License as published by
+;;;; the Free Software Foundation, under version 3 of the License.
+;;;;
+;;;; This program is distributed in the hope that it will be useful,
+;;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;;;; GNU Lesser General Public License for more details.
+;;;;
+;;;; You should have received a copy of the GNU General Public License
+;;;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;;;;
+;;;; Copyright (C) 2011 Acceleration.net, Russ Tyndall
+;;;;   email: bobbysmith007@gmail.com
+;;;;
+;;;; This program comes with ABSOLUTELY NO WARRANTY; for details see COPYING.
+;;;; This is free software, and you are welcome to redistribute it
+;;;; under certain conditions; for details see COPYING.
