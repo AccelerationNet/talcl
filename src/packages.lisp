@@ -2,7 +2,7 @@
 ;;;; see ucw:*uri-to-package*
 
 (defpackage :net.acceleration.talcl
-    (:use :common-lisp :arnesi :iterate)
+    (:use :common-lisp :iterate)
   (:nicknames :talcl)
   (:export
    #:def-attribute-handler

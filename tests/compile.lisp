@@ -1,11 +1,13 @@
 (in-package :talcl-test)
-(cl-interpol:enable-interpol-syntax)
 
 (adwtest test-comment (compile-tests)
   (let* ((comment "<!-- Awesome Comment -->")
-	 (it #?"<div class=\"welcome frontPageMenu\"
+	 (it (format
+	      nil
+	      "<div class=\"welcome frontPageMenu\"
                xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
-               tal:in-package=\"talcl-test\">A Comment:${comment}END</div>")
+               tal:in-package=\"talcl-test\">A Comment:~AEND</div>"
+	      comment))
 	 (fn (talcl::compile-tal-string it))
 	 (out (buffer-xml-output ()
 		(talcl::%call-template-with-tal-environment fn '()))))
@@ -187,7 +189,8 @@
                <tal:include tal:name=\"basic\" param:value=\"${pname2}\" />
                <tal:include tal:name=\"basic\" param:value=\"${pname3}\" />
           </div>")
-    (talcl:call-template-with-tal-environment *test-generator* "test" ())
+    (talcl:call-template-with-tal-environment
+     *test-generator* "test" ())
     (assert-equal *test-count* 3
 		  "We included 3 times so we should have incf'ed 3 times"))
 

@@ -562,7 +562,7 @@
   (with-input-from-string (s *string-being-compiled*)
     (let ((target (search expr *string-being-compiled* :test #'char=)))
       (when target
-	(iter (for line in-stream s using #'adwutils:dos-safe-read-line )
+	(iter (for line in-stream s using #'dos-safe-read-line )
 	      (for line-len = (+ 1 (length line))) ;;dont forget newlines
 	      (for start-len = total-len)
 	      (summing line-len into total-len)

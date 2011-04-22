@@ -1,30 +1,43 @@
-(defpackage :net.acceleration.talcl-test
+
+  (defpackage :net.acceleration.talcl-test
     (:nicknames :talcl-test)
   (:use :common-lisp
-	:net.acceleration.utils
-	:it.bese.arnesi
 	:iterate
 	:talcl
 	:lisp-unit
 	:buildnode
-	:bind))
+
+	:net.acceleration.utils
+	:it.bese.arnesi
+	
+	))
 
 (in-package :talcl-test)
-(cl-interpol:enable-interpol-syntax)
-(eval-always
-  (unless (get-logger 'talcl-test::tal-log)
-    (deflogger talcl-test::tal-log () :appender (arnesi:make-slime-repl-log-appender))))
+
+
+(defun log-time (&optional (time (get-universal-time)) stream)
+  "returns a date as ${mon}/${d}/${y} ${h}:${min}:{s}, defaults to get-universal-time"
+  (multiple-value-bind ( s min h  )
+      (decode-universal-time time)
+    (format stream "~2,'0d:~2,'0d:~2,'0d "  h min s)))
+
+(defun tal-log.info (message &rest args)
+  (log-time (get-universal-time) lisp-unit::*lisp-unit-stream*)
+  (apply #'format lisp-unit::*lisp-unit-stream* message args)
+  (format lisp-unit::*lisp-unit-stream* "~%"))
 
 (with-package-iterator (sym '(:talcl) :internal)
   (iter (multiple-value-bind (more? symbol accessibility pkg) (sym)
 	  (declare (ignore accessibility))
 	  (when (eql (find-package :talcl)
 		     pkg)
-	    (ignore-errors (import (list symbol) :talcl-test)))
+	    (ignore-errors
+	      (unintern symbol :talcl-test)
+	      (import (list symbol) :talcl-test)))
 	  (while more?))))
 
 (defclass tal-test-generator (tal-generator)
-  #.(slot-defs '(tals)))
+  ((tals :accessor tals :initarg :tals :initform nil)))
 
 (defmethod load-tal ((g tal-test-generator) name)
   (cdr (assoc name (tals g) :test #'equalp)))
@@ -44,18 +57,21 @@
 (defmacro adwtest (name (&rest args) &body body)
   (iter (for tag in args)
 	(setf (get tag :tests)
-	      (union (ensure-list (get tag :tests))
+	      (union (buildnode::ensure-list (get tag :tests))
 		     (list name))))
   `(lisp-unit:define-test ,name
-     (tal-log.info #?"\nSTARTING Tal Test: ~S\n" ',name)
+     (tal-log.info "~%STARTING Tal Test: ~S~%" ',name)
      (let* ((talcl::*tal-generator* *test-generator*)
 	    (out (talcl::buffer-xml-output () ,@body)))
-       (tal-log.info #?"\nTal Test: ~S \n-------------\n~a\n-------------\n" ',name out))))
+       (when (plusp (length out))
+	 (tal-log.info
+	  "~%Tal Test: ~S ~%-------------~%~a~%-------------~%" ',name out)
+	 ))))
 
 (defun run-tests-with-debugging (&key tests suites)
   (let* ((lisp-unit::*use-debugger* T)
-	 (tests (append (ensure-list tests)
-			(iter (for suite in (ensure-list suites))
+	 (tests (append (buildnode::ensure-list tests)
+			(iter (for suite in (buildnode::ensure-list suites))
 			      (appending (get suite :tests)))))
 	 (out (with-output-to-string (s)
 		(let ((lisp-unit::*lisp-unit-stream*
@@ -67,4 +83,4 @@
 		  (lisp-unit::run-test-thunks
 		   (lisp-unit::get-test-thunks
 		    (if (null tests) (get-tests *package*) tests)))))))
-    (tal-log.info #?"\n ** TEST RESULTS ** \n-----------\n${out}\n------------\n")))
+    (tal-log.info "~% ** TEST RESULTS ** ~%-----------~%~A~%------------~%" out)))

@@ -21,7 +21,7 @@
 (defparameter *tal-templates* (make-hash-table :test 'equal))
 
 (defmethod template-truename ((generator file-system-generator) name)
-  (net.acceleration.utils:find-file-in-directories
+  (find-file-in-directories
    name (root-directories generator)))
 
 (defmethod load-tal ((generator file-system-generator) (name string))

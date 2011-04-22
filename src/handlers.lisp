@@ -239,54 +239,54 @@ Example:
 The template other-template.tal will be evaluated with the additional
 parameters of 'foo' and 'contents'.
 "
-  (let ((template-name
+  (let (augmented-env
+	(template-name
 	 (or
 	  (pull-attrib-val! tag 'tal::name)
 	  (awhen (pull-attrib-val! tag 'tal::name-expression)
 	    (parse-tal-attribute-value it))
 	  (tal-error "Missing TAL:NAME and TAL:NAME-EXPRESSION tags."))))
-    (flet ((var (param)
+    (flet ((aug (var val)
+	     (push var augmented-env)
+	     (push val augmented-env))
+	   (var (param)
 	     `(quote ,(intern (string param) *expression-package*))))
-      (destructure-tag (tag)
-	(with-collector (augmented-env)
-	  ;; 1) grab all the attribute params
-	  (iter
-	    (for (param value) in tag-attributes)
-	    (if (eql (find-package :tal.include-params)
-		     (symbol-package param))
-		(augmented-env (var param)
-			       (parse-tal-attribute-value value))
-		(tal-warn "Ignoring attribute in TAL:INCLUDE: ~S (~S)."
-			  param (symbol-package param))))
+      (destructure-tag (tag)	
+	;; 1) grab all the attribute params
+	(iter
+	  (for (param value) in tag-attributes)
+	  (if (eql (find-package :tal.include-params)
+		   (symbol-package param))
+	      (aug (var param) (parse-tal-attribute-value value))
+	      (tal-warn "Ignoring attribute in TAL:INCLUDE: ~S (~S)."
+			param (symbol-package param))))
 	
-	  ;; 2) grab all the body params
-	  ;; 
-	  (dolist (child tag-body)
-	    (unless (stringp child)
-	      (destructuring-bind (param-name attributes &rest body) child
+	;; 2) grab all the body params
+	(dolist (child tag-body)
+	  (unless (stringp child)
+	    (destructuring-bind (param-name attributes &rest body) child
 		
-		(let ((type (or (cadr (find 'tal.include-params::type attributes
-					    :key #'first))
-				(cadr (find 'tal::type attributes
-					    :key #'first)))))
+	      (let ((type (or (cadr (find 'tal.include-params::type attributes
+					  :key #'first))
+			      (cadr (find 'tal::type attributes
+					  :key #'first)))))
 		(if (eql (find-package :tal.include-params)
 			 (symbol-package param-name))
-		    (augmented-env
-		     (var param-name)
-		     (cond
-		       ((and type (string-equal type "string"))
-			`(buffer-xml-output () ,@(transform-lxml-tree body)))
-		       (t
-			`(buffered-template-call
-			  ,(compile-tal-parse-tree-to-lambda
-			    body *expression-package* T)
-			  -tal-environment-))))
+		    (aug (var param-name)
+			 (cond
+			   ((and type (string-equal type "string"))
+			    `(buffer-xml-output () ,@(transform-lxml-tree body)))
+			   (t
+			    `(buffered-template-call
+			      ,(compile-tal-parse-tree-to-lambda
+				body *expression-package* T)
+			      -tal-environment-))))
 		    (tal-warn "Ignoring body tag in TAL:INCLUDE: ~S." param-name))))))
-	  ;; 3) GO!
-	  ;; TODO: Figure out the generator logic and make sure this still works.
-	  (with-unique-names (tname)
-	    ;; some generators are not filesystem based and so shouldnt have
-	    ;; a truename to merge (such as the test generator)
+	;; 3) GO!
+	;; TODO: Figure out the generator logic and make sure this still works.
+	(with-unique-names (tname)
+	  ;; some generators are not filesystem based and so shouldnt have
+	  ;; a truename to merge (such as the test generator)
 	  `(let ((,tname ,(if *tal-truename* 
 			      (if (constantp template-name)
 				  (merge-pathnames template-name *tal-truename*)
@@ -295,8 +295,8 @@ parameters of 'foo' and 'contents'.
 			      template-name)))
 	     (call-template-with-tal-environment
 	      ,*tal-generator* ,tname
-	      (tal-env ,@(augmented-env))
-	      ))))))))
+	      (tal-env ,@(nreverse augmented-env))
+	      )))))))
 
 (def-tag-handler tal:def (tag)
   "TAG-HANDLER: creates an inline sub-template available for the duration
