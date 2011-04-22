@@ -33,7 +33,7 @@ will insert the template in the sax stream."
 
 (defun dom-walk-helper (tree)
   (cxml:with-output-sink (cxml::*sink*)
-    (loop for n in (arnesi:ensure-list tree)
+    (loop for n in (ensure-list tree)
 	  do (typecase n
 	       (string (cxml:text n))
 	       (list (dom-walk-helper n))
