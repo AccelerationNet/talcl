@@ -40,16 +40,30 @@
 					  :talcl #p"examples/"))))
 
 ;; an example of building a dom snippet, to be spliced into the template
-
 (defun example-footer-menu ()
-  (xhtml:ul ()
-    (iter (for i from 0 to 4)
-	  (for name = (format nil "~D footer list item" i))
-	  (collect (xhtml:li `(:title ,name) name )))))
-
-;; This will print out the 
+  (if buildnode:*document*
+      (xhtml:ul ()
+	(iter (for i from 0 to 4)
+	      (for name = (format nil "~D footer list item" i))
+	      (collect (xhtml:li `(:title ,name) name ))))
+      "<ul><li>0 footer list item</li><li>1 footer list item</li></ul>")
+  )
 
 (defun process-example-window-to-string ()
+  (let ((net.acceleration.buildnode:*html-compatibility-mode* t)
+	(fn (talcl:load-tal *example-generator* "window.tal")))
+    (talcl:run-template-fn
+     fn (talcl:tal-env 'page-title "My Example Page"
+		       'header-dom-id "header"
+		       'body "<div>Some Body Content</div>"
+		       'escaped-html-string "<span >Escaped HTML</span>"
+		       'unescaped-html-string "<span >Unescaped HTML</span>"
+		       ))))
+
+
+
+;; This will put a template into a dom document, then render out that document
+(defun process-example-window-to-string-using-dom-document ()
   (let ((net.acceleration.buildnode:*html-compatibility-mode* t)
 	(doc (buildnode:with-html-document
 	       (tal-processing-instruction
