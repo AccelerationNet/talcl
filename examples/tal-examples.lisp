@@ -35,6 +35,9 @@
 ;; will locate files for the system in the "examples" dir
 
 (defvar *example-generator*
+  ;;caching-file-system-generator keeps a reference to the compiled
+  ;;lisp function but checks date-modified to make sure that's up to
+  ;;date before use
   (make-instance 'talcl:caching-file-system-generator
 		 :root-directories (list (asdf:system-relative-pathname
 					  :talcl #p"examples/"))))
