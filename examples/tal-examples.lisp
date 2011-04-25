@@ -1,5 +1,31 @@
 (in-package :talcl)
 
+;; Makes about the simplest possible plain text template and
+;; returns the result of calling it
+(defun easy-template-example ()
+  (let ((fn
+	 (talcl:compile-tal-string
+	  "<tal:tal
+            xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+            >Super Simple Template</tal:tal>")))
+    (talcl:run-template-fn fn (talcl:tal-env))))
+
+;; Makes a very simple plain text template that splices a single
+;; value into your simple template
+(defun easy-template-example-2 ()
+  (let ((fn
+	 (talcl:compile-tal-string
+	  "<tal:tal tal:in-package=\"talcl\"
+            xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+            >Super Simple Template $this-is-some-data </tal:tal>")))
+    (list
+     ;; the package of the symbols in the env, needs to match their package
+     ;; when the template is evaluated, see tal:in-package
+     (talcl:run-template-fn
+      fn (talcl:tal-env 'this-is-some-data "My Data"))
+     (talcl:run-template-fn
+      fn (talcl:tal-env 'this-is-some-data "Your Data")))))
+
 ;; This file builds html dom nodes for the examples so make sure
 ;; we have that package available
 
