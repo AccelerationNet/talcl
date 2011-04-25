@@ -9,7 +9,7 @@
 ;; will locate files for the system in the "examples" dir
 
 (defvar *example-generator*
-  (make-instance 'talcl:file-system-generator
+  (make-instance 'talcl:caching-file-system-generator
 		 :root-directories (list (asdf:system-relative-pathname
 					  :talcl #p"examples/"))))
 
