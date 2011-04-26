@@ -13,10 +13,16 @@
 
 (defclass file-system-generator (tal-generator)
   ((root-directories :initarg :root-directories :type list
-		     :accessor root-directories)))
+		     :accessor root-directories))
+  (:documentation "When given a list of root directories it will
+  search for templates in those directories."))
 
 (defclass caching-file-system-generator (file-system-generator)
-  ((cache :accessor cache :initform (make-hash-table :test 'equal))))
+  ((cache :accessor cache :initform (make-hash-table :test 'equal)))
+  (:documentation "Similar to a file-system-generator it generates out
+  of some root directories, however it keeps a cache of the compiled
+  lisp functions. The function you get back from it checks the file's
+  date-modified and automatically recompiles at need."))
 
 (defparameter *tal-templates* (make-hash-table :test 'equal))
 
