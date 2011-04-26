@@ -30,6 +30,11 @@
 			 (:file "compile"))))
   :depends-on (:talcl :lisp-unit))
 
+(defmethod asdf:perform ((o asdf:test-op) (c (eql (find-system :talcl))))
+  (asdf:oos 'asdf:load-op :talcl-test)
+  (funcall (intern "RUN-TESTS" :talcl-test)
+	   :use-debugger nil))
+
 ;;;; Copyright (C) 2011 Acceleration.net, Russ Tyndall
 ;;;;   email: bobbysmith007@gmail.com
 ;;;;
