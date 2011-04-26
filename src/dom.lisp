@@ -36,7 +36,7 @@ will insert the template in the sax stream."
 	  do (typecase n
 	       (string (cxml:text n))
 	       (list (dom-walk-helper n))
-	       (dom:node (dom:walk cxml::*sink* n))))))
+	       (dom:node (%dom-walk cxml::*sink* n))))))
 
 (defun make-output-sink (stream &key canonical indentation (char-p T))
   (make-template-processing-sink

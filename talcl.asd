@@ -7,6 +7,9 @@
 	    :serial T
 	    :components ((:file "packages")
 			 (:file "tal-environment")
+			 ;; should be removed once a patch doing the same thing makes its
+			 ;; way upstream
+			 (:file "dom-walker")
 			 (:file "sax-buffer")
 			 (:file "compile")
 			 (:file "dom")

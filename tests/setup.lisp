@@ -17,6 +17,7 @@
     (format stream "~2,'0d:~2,'0d:~2,'0d "  h min s)))
 
 (defun tal-log.info (message &rest args)
+  (format lisp-unit::*lisp-unit-stream* "~&")
   (log-time (get-universal-time) lisp-unit::*lisp-unit-stream*)
   (apply #'format lisp-unit::*lisp-unit-stream* message args)
   (format lisp-unit::*lisp-unit-stream* "~%"))
