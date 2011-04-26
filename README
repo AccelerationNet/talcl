@@ -2,6 +2,7 @@
 
 This library is a significant branch of the TAL implementation found in arnesi / ucw
 
+== Examples ==
 See the examples directory for runable lisp code and tal templates.
 
 == Primary Goals ==
