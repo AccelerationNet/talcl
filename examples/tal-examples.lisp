@@ -1,5 +1,10 @@
 (in-package :talcl)
 
+;; This file builds html dom nodes for the examples so make sure
+;; we have that package available
+(eval-when (:COMPILE-TOPLEVEL :LOAD-TOPLEVEL :EXECUTE)
+  (asdf:oos 'asdf:load-op 'buildnode-xhtml))
+
 ;; Makes about the simplest possible plain text template and
 ;; returns the result of calling it
 (defun easy-template-example ()
@@ -25,11 +30,6 @@
       fn (talcl:tal-env 'this-is-some-data "My Data"))
      (talcl:run-template-fn
       fn (talcl:tal-env 'this-is-some-data "Your Data")))))
-
-;; This file builds html dom nodes for the examples so make sure
-;; we have that package available
-
-(asdf:oos 'asdf:load-op :buildnode-xhtml)
 
 ;; Generators help locate templates files on disk, this one
 ;; will locate files for the system in the "examples" dir
