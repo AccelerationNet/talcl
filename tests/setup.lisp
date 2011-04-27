@@ -5,7 +5,8 @@
 	:iterate
 	:talcl
 	:lisp-unit
-	:buildnode))
+	:buildnode)
+  (:shadow :run-tests))
 
 (in-package :talcl-test)
 
