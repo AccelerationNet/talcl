@@ -197,17 +197,15 @@ displaced array pointing to the sequence after PREFIX."
 	(if rel-p
 	    (let ((merged (eliminate-..-in-path
 			   (merge-pathnames name root))))
-	      
-	      (awhen (probe-file merged)
+	      (when (probe-file merged)
 		;;found a file, now check that it is in the roots. 
 		(return-from find-file-in-directories
-		  (find-file-in-directories it root-directories))))
+		  (find-file-in-directories merged root-directories))))
 	    
 	    ;; we have an absolute file path, if root is absolute, we
 	    ;; should verify that the file is rooted in this directory
 	    ;; if the root is relative, assume we did stuff correctly
 	    ;; above
-	    
 	    (when (or (not (eql :absolute (car root-dirs)))
 		      (starts-with dir-list root-dirs :test #'equal))
 	      (return-from find-file-in-directories (probe-file name))))))))
