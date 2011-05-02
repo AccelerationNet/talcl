@@ -400,3 +400,120 @@ ${ (assert-true T) }
     (assert-true
      (search "hahaha</foo:baz>" out :test #'char=)
      out)))
+
+(adwtest test-dom-insertion (dom)
+  "Verify that when we insert nodes directly into the dom,
+   that they appear and have the correct content and locations"
+  (let* ((tmpl "<html
+               class=\"welcome frontPageMenu\"
+               xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"> first lb
+<head><title>Title</title></head> second lb
+<body><div id=\"header\" class=\"my-class\"><h1>Title</h1></div></body> third lb
+</html>")
+	 (_ (add-tal *test-generator* "basic-window" tmpl))
+	 (doc (buildnode:with-xhtml-document
+		(tal-template-content *test-generator* "basic-window" nil)))
+	 (ds (document-to-string doc)))
+    (declare (ignore _))
+    (assert-equalp
+     "HTML"
+     (dom:tag-name (dom:first-child doc))
+     doc
+     ds)
+
+    (assert-equalp
+     "welcome frontPageMenu"
+     (buildnode:get-attribute (dom:first-child doc) :class)
+     doc
+     ds)
+
+    (assert-equalp
+     "Title"
+     (buildnode:text-of-dom-snippet
+       (elt (dom:child-nodes (dom:first-child doc)) 1))
+     doc
+     ds)
+    
+    ))
+
+(adwtest test-document-to-string (dom)
+  ;;                xmlns=\"http://www.w3.org/1999/xhtml\"
+  (add-tal *test-generator* "basic-window"
+	   "<html
+               class=\"welcome frontPageMenu\"
+               xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"> first lb
+<head><title>Page Title</title></head> second lb
+<body><div id=\"header\" class=\"my-class\"><h1>Title</h1></div></body> <!-- third lb -->
+</html>")
+  (add-tal *test-generator* "basic-window-guts"
+	   "<tal:tal
+               xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"> first lb
+<head><title>Page Title</title></head> second lb
+<body><div id=\"header\" class=\"my-class\"><h1>Title</h1></div></body> <!-- third lb -->
+</tal:tal>")
+  (let* (;; TODO: Figure out how to get attributes to round trip in the same order
+	 (match-in-order
+	  "<body><div id=\"header\" class=\"my-class\"><h1>Title</h1></div></body> <!-- third lb -->")
+	 (match "<body><div class=\"my-class\" id=\"header\"><h1>Title</h1></div></body> <!-- third lb -->")
+	 
+	 ;; inserting a template as a dom sub-tree
+	 (doc (buildnode:with-xhtml-document
+		(tal-template-content *test-generator* "basic-window" nil)))
+	 (ds (talcl:document-to-string doc))
+
+	 ;; inserting a template as a dom sub-tree
+	 (doc3 (buildnode:with-xhtml-document		 
+		 (tal-template-content *test-generator* "basic-window-guts" nil
+				       (xhtml:html ()))))
+	 (ds3 (talcl:document-to-string doc3))
+
+	 ;; Inserting a template as a processing instruction
+	 (doc2 (buildnode:with-xhtml-document
+		(tal-processing-instruction *test-generator* "basic-window" nil)))
+	 (ds2 (talcl:document-to-string doc2))
+	 
+	 ;; inserting a template as a dom sub-tree
+	 (doc4 (buildnode:with-html-document
+		 (tal-template-content *test-generator* "basic-window-guts" nil
+				       (xhtml:html ()))))
+	 (ds4 (talcl:document-to-string doc4))
+	 
+	 ;; inserting a template as a dom sub-tree
+	 (doc5 (buildnode:with-html-document
+		 (tal-template-content *test-generator* "basic-window" nil)))
+	 (ds5 (talcl:document-to-string doc5)))
+    
+    (assert-true
+     (search match ds :test #'string-equal)
+     match
+     doc
+     ds
+     :dom-insert)
+
+    (assert-true
+     (search match ds3 :test #'string-equal)
+     match
+     doc3
+     ds3
+     :dom-insert-guts)
+
+    (assert-true
+     (search match-in-order ds2 :test #'string-equal)
+     match-in-order
+     doc2
+     ds2
+     :processing-instruction)
+    
+    (assert-true
+     (search match ds4 :test #'string-equal)
+     match
+     doc4
+     ds4
+     :dom-insert-guts-html)
+    (assert-true
+     (search match ds5 :test #'string-equal)
+     match
+     doc5
+     ds5
+     :dom-insert-html)))
+

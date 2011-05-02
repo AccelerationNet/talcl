@@ -39,7 +39,12 @@
    #:make-template-processing-sink
    #:tal-processing-instruction
 
-   ))
+   #:document-to-string
+   #:document-to-stream
+   #:tal-template-content
+
+   )
+  (:shadow ))
 
 (eval-when (:load-toplevel :execute :compile-toplevel)
   (when (find-package :it.bese.yaclml.tal)

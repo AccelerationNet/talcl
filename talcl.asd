@@ -28,7 +28,7 @@
 	    :serial t
 	    :components ((:file "setup")
 			 (:file "compile"))))
-  :depends-on (:talcl :lisp-unit))
+  :depends-on (:talcl :lisp-unit :buildnode-xhtml))
 
 (defmethod asdf:perform ((o asdf:test-op) (c (eql (find-system :talcl))))
   (asdf:oos 'asdf:load-op :talcl-test)

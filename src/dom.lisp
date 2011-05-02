@@ -22,7 +22,11 @@
 
 (defun tal-processing-instruction (generator template-name env)
   "Make a tal-processing-instruction. It's a dom node that when processed
-will insert the template in the sax stream."
+will insert the template in the sax stream.
+
+   The template content will never be part of the dom, which saves two changes
+   of representation.
+   "
   (make-instance
    'template-node
    :owner buildnode:*document*
@@ -43,12 +47,29 @@ will insert the template in the sax stream."
    (buildnode:make-output-sink
     stream :canonical canonical :indentation indentation :char-p char-p)))
 
+(defun tal-template-content (generator template-name env &optional (node buildnode:*document*))
+  "Serialize a template into the document as children of the node passed in"
+  (let* ((sink (make-template-processing-sink
+		(buildnode:make-scoped-dom-builder node))))
+    ;(setf (cxml::sink-omit-xml-declaration-p cxml::*sink*) T)
+    (with-this-sink (sink)      
+      (talcl::%call-template-with-tal-environment
+       (load-tal generator template-name)
+       env))
+    ;; documents cannot be appended to a document
+    ;; but we wish to support
+    ;; (with-html-document (tal-template-content ... (xhtml:div ())))
+    (etypecase node
+      (dom:element node)
+      (dom:document (values)))))
+
 (defun document-to-stream ( doc stream )
-  (let ((sink (talcl::make-output-sink stream)))
+  (let* ((buildnode::*html-compatibility-mode* (buildnode::html-output? doc))
+	 (sink (talcl::make-output-sink stream)))
     (buildnode::write-normalized-document-to-sink doc sink)))
 
 (defun document-to-string ( doc )
   (with-output-to-string (s)
-    (document-to-stream doc s)))
+    (talcl::document-to-stream doc s)))
 
 

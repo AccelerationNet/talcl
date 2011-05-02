@@ -4,8 +4,7 @@
   (:use :common-lisp
 	:iterate
 	:talcl
-	:lisp-unit
-	:buildnode)
+	:lisp-unit)
   (:shadow :run-tests))
 
 (in-package :talcl-test)
@@ -68,8 +67,8 @@
 (defun run-tests (&key suites tests (use-debugger T))
   (let* ((*package* (find-package :talcl-test))
 	 (lisp-unit::*use-debugger* use-debugger)
-	 (tests (append (ensure-list tests)
-			(iter (for suite in (ensure-list suites))
+	 (tests (append (buildnode::ensure-list tests)
+			(iter (for suite in (buildnode::ensure-list suites))
 			      (appending (get suite :tests)))))
 	 (out (with-output-to-string (*standard-output*)
 		(lisp-unit::run-test-thunks

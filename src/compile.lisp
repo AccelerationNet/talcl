@@ -326,6 +326,41 @@
     (t (error "Badly formatted TAL: ~S." form))))
 
 
+(defun specified-attribute* (prefix lname value &optional qname)
+  "A copy of cxml:attribute* that sets specified-p correctly
+   TODO: cxml:attribute* should probably set this by default or
+         accept it as an optional arg.  Push this upstream
+
+   @arg[prefix]{Namespace prefix, a string.}
+   @arg[lname]{Local name, a string.}
+   @arg[value]{Any value understood by @fun{unparse-attribute}, in particular
+     strings.}
+   @return{undocumented}
+
+   Collects an attribute for the start tag that is currently being written.
+
+   This function may only be called during the extent of a use of
+   @fun{with-element} or @fun{with-element*}, and only before the first
+   child node has been written.
+   
+   An attribute for the current element is recorded using the namespace prefix
+   and local name specified by arguments.  @var{prefix} is resolved to a
+   namespace URI using the bindings established by @fun{with-namespace},
+   and that namespace URI is used for the attribute."
+  (setf value (cxml:unparse-attribute value))
+  (when value
+    (setf prefix (when prefix (runes:rod prefix)))
+    (setf lname (runes:rod lname))
+    (push (sax:make-attribute
+	   :namespace-uri (cxml::find-unparse-namespace prefix)
+	   :local-name lname
+	   :qname (or qname
+		      (if prefix (concatenate 'runes:rod prefix #":" lname) lname))
+	   :value (runes:rod value)
+	   ;; THIS SHOULD BE SPECIFIED  TODO:Push upstream
+	   :specified-p T)
+	  (cdr cxml::*current-element*))))
+
 (defun transform-lxml-regular-tag (tag-name attributes body)
   (case tag-name
     (:comment `(cxml:comment ,(first body)))
@@ -352,7 +387,7 @@
                                        ,(buildnode::get-prefix ns)
                                        ,lname
                                        ,value)))
-                               `(cxml:attribute* nil ,key ,value)))))
+                               `(specified-attribute* nil ,key ,value)))))
               ;;the attrib-forms must be done ahead of this so
               ;;that get-prefix can lookup in the ammended
               ;;namespace-prefix-map
