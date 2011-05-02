@@ -63,10 +63,41 @@
 		       'unescaped-html-string "<span >Unescaped HTML</span>"
 		       ))))
 
+;; This will put a template into a dom document, then render out that document
+;; Template content will be put into the 
+(defun process-example-window-to-string-using-dom-documents-and-dom-subtrees ()
+  (let ((net.acceleration.buildnode:*html-compatibility-mode* t)
+	(doc (buildnode:with-html-document
+	       (tal-template-content
+		*example-generator* "window.tal"
+		(talcl:tal-env 'page-title "My Example Page"
+			       'header-dom-id "header"
+			       'body (buildnode:add-children
+				      ;; put the template content in a new div
+				      (tal-template-content
+				       *example-generator* "body.tal" nil
+				       (xhtml:div ()))
+				      ;; add this span to the div on the prev line
+				      ;; which also contains the template content
+				      (xhtml:span ()
+					"A random new dom child to demo manip"))
+
+			       'escaped-html-string "<span >Escaped HTML</span>"
+			       'unescaped-html-string "<span >Unescaped HTML</span>"
+			       'print-help nil
+			       )))))
+    ;;(break "~A" doc)
+    (document-to-string doc))
+  )
+
 
 
 ;; This will put a template into a dom document, then render out that document
-(defun process-example-window-to-string-using-dom-document ()
+;; Template nodes in the dom are xml-processing instructions that are expanded during
+;; document serialization, this is more efficient than using dom-sub-trees because we change
+;; representations fewer times, however, none of the template content is accessible from
+;; the dom
+(defun process-example-window-to-string-using-dom-document-processing-instructions ()
   (let ((net.acceleration.buildnode:*html-compatibility-mode* t)
 	(doc (buildnode:with-html-document
 	       (tal-processing-instruction
@@ -79,6 +110,7 @@
 
 			       'escaped-html-string "<span >Escaped HTML</span>"
 			       'unescaped-html-string "<span >Unescaped HTML</span>"
+			       'print-help T
 			       )))))
     ;;(break "~A" doc)
     (document-to-string doc))

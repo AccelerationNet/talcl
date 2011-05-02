@@ -57,5 +57,5 @@
     </div><!-- page -->
   </body>
   <!-- descriptions -->
-  <tal:describe-handlers />
+  <tal:describe-handlers tal:when="$print-help" />
 </html>

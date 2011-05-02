@@ -1,0 +1,7 @@
+<div class="my-body-div"
+     tal:in-package="talcl"
+     xmlns:tal="http://common-lisp.net/project/bese/tal/core"
+     xmlns:param="http://common-lisp.net/project/bese/tal/params"
+     > 
+  <span>Some Body Content</span>
+</div>
