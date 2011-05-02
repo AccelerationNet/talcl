@@ -83,7 +83,7 @@
 					"A random new dom child to demo manip"))
 
 			       'escaped-html-string "<span >Escaped HTML</span>"
-			       'unescaped-html-string "<span >Unescaped HTML</span>"
+			       'unescaped-html-string "<span >Unescaped HTML &lt;escape characters shoudlnt be double escaped &gt;</span>"
 			       'print-help nil
 			       )))))
     ;;(break "~A" doc)

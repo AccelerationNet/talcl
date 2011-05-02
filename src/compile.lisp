@@ -283,10 +283,10 @@
   (let ((parts (parse-talable-string value-string)))
     (case (length parts)
       (0 nil)
-      (1 `(%emit-tagged-content ,(car parts)))
+      (1 `(%emit-tagged-content ,(car parts) T))
       (t `(progn
             ,@(iter (for p in parts)
-                   (collect `(%emit-tagged-content ,p))))))))
+                   (collect `(%emit-tagged-content ,p T))))))))
 
 (defun transform-lxml-tree (tree)
   "Given a tree representing some LXML code with TAL attributes

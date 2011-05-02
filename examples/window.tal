@@ -45,8 +45,11 @@
       </div>
       <div id="contentBg">
 	<tal:tal tal:content="$escaped-html-string" />
+	${escaped-html-string}
+	<hr />
 	<tal:tal tal:content-as-is="unescaped-html-string" />
-	${unescaped-html-string}
+	
+	<hr />
 	<div class="content-body" tal:content-as-is="$body"/>
 	<div class="kill-float"></div>
       </div><!-- contentBg -->
