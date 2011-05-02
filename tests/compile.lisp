@@ -101,6 +101,19 @@
 	 (fn (talcl::compile-tal-string it)))
     (talcl::%call-template-with-tal-environment fn ())))
 
+(adwtest test-attrib-value-quoting (compile-tests)
+  (let* ((it "<div class=\"welcome frontPageMenu\"
+               xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+               tal:in-package=\"talcl-test\">
+                  <span foo=\"$foo-val\">
+                  </span>
+          </div>")
+	 (fn (talcl::compile-tal-string it))
+	 (res  (run-template-fn  fn `(foo-val "\"quoted\""))))
+    (assert-true
+     (search "&quot;quoted&quot;" res :test #'string-equal)
+     res)))
+
 (adwtest test-left-to-right-attrib-eval (compile-tests)
   " Verify that the in-package takes place before the let,
     so that vars are interned in the correct place
