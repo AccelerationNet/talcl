@@ -61,7 +61,7 @@
 	   (out (buffer-xml-output ()
 		  (talcl::%call-template-with-tal-environment fn '()))))
       (assert-true
-       (search "Test that <MISSING> should be missing" out :test #'char=)
+       (search "Test that &lt;MISSING&gt; should be missing" out :test #'char=)
        out))))
 
 (adwtest test-missing-value3 (runtime-tests missing-values)
@@ -78,7 +78,7 @@
 		    (talcl::%call-template-with-tal-environment fn '()))
 		  )))
       (assert-true
-       (search "Test that <MISSING> should be missing" out :test #'char=)
+       (search "Test that &lt;MISSING&gt; should be missing" out :test #'char=)
        out))))
 
 (adwtest test-in-package (compile-tests)
