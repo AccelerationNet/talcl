@@ -25,7 +25,7 @@
 will insert the template in the sax stream.
 
    The template content will never be part of the dom, which saves two changes
-   of representation.
+   of representation. This is about 3 times faster than tal-template-content.
    "
   (make-instance
    'template-node
@@ -48,7 +48,10 @@ will insert the template in the sax stream.
     stream :canonical canonical :indentation indentation :char-p char-p)))
 
 (defun tal-template-content (generator template-name env &optional (node buildnode:*document*))
-  "Serialize a template into the document as children of the node passed in"
+  "Serialize a template into the document as children of the node passed in
+
+   This is about 3 times slower than the tal-processing-instruction
+  "
   (let* ((sink (make-template-processing-sink
 		(buildnode:make-scoped-dom-builder node))))
     ;(setf (cxml::sink-omit-xml-declaration-p cxml::*sink*) T)

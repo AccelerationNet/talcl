@@ -45,10 +45,17 @@
 (defmethod add-tal ((g tal-test-generator) (name t) (fn string))
   (add-tal g name (talcl::compile-tal-string fn)))
 
+(defmethod add-tal ((g tal-test-generator) (name t) (pth pathname))
+  (add-tal g name (talcl::compile-tal-file pth)))
+
 (defmethod template-truename ((g tal-test-generator) name)
   name)
 
 (defvar *test-generator* (make-instance 'tal-test-generator))
+(defvar *example-generator*
+  (make-instance 'talcl:caching-file-system-generator
+		 :root-directories (list (asdf:system-relative-pathname
+					  :talcl #p"examples/"))))
 
 (defmacro adwtest (name (&rest args) &body body)
   (iter (for tag in args)

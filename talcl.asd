@@ -1,3 +1,12 @@
+;; -*- lisp -*-
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (unless (find-package :talcl.system)
+    (defpackage :talcl.system
+	(:use :common-lisp :asdf))))
+
+(in-package :talcl.system)
+
 (defsystem :talcl
   :description "TAL in CL"
   :licence "LGPL"
@@ -18,6 +27,17 @@
 	    ))
   :depends-on (:buildnode :cxml :iterate))
 
+(defsystem :talcl-examples
+  :description "talcl-examples examples for talcl tal templating library"
+  :author "Acceleration.net"
+  :licence "LGPL"
+  :version "0.2"
+  :components
+  ((:module :examples
+	    :serial t
+	    :components ((:file "tal-examples"))))
+  :depends-on (:talcl :buildnode-xhtml))
+
 (defsystem :talcl-test
   :description "talcl-test tests for talcl tal templating library"
   :author "Acceleration.net"
@@ -29,6 +49,18 @@
 	    :components ((:file "setup")
 			 (:file "compile"))))
   :depends-on (:talcl :lisp-unit :buildnode-xhtml))
+
+(defsystem :talcl-speed-tests
+  :description "talcl-test tests for talcl tal templating library"
+  :author "Acceleration.net"
+  :licence "LGPL"
+  :version "0.2"
+  :components
+  ((:module :tests
+	    :serial t
+	    :components ((:file "setup")
+			 (:file "speed"))))
+  :depends-on (:talcl :lisp-unit :buildnode-xhtml :talcl-examples))
 
 (defmethod asdf:perform ((o asdf:test-op) (c (eql (find-system :talcl))))
   (asdf:oos 'asdf:load-op :talcl-test)
