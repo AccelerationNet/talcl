@@ -104,3 +104,6 @@
 
 (defmethod %dom-walk (handler (n dom:processing-instruction)  &key &allow-other-keys)
   (sax:processing-instruction handler (dom:target n) (dom:data n)))
+
+(defmethod %dom-walk (handler (n dom:entity-reference)  &key &allow-other-keys)
+  (sax:unescaped handler (format nil "&~A;" (dom:name n))))
