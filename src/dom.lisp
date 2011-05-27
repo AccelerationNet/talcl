@@ -55,7 +55,7 @@ will insert the template in the sax stream.
   (let* ((sink (make-template-processing-sink
 		(buildnode:make-scoped-dom-builder node))))
     ;(setf (cxml::sink-omit-xml-declaration-p cxml::*sink*) T)
-    (with-this-sink (sink)      
+    (with-this-sink (sink)
       (talcl::%call-template-with-tal-environment
        (load-tal generator template-name)
        env))

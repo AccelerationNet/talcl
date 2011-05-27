@@ -263,23 +263,6 @@ displaced array pointing to the sequence after PREFIX."
    bound into the lisp dynamic environment."
   (%call-template-with-tal-environment (load-tal generator template) env))
 
-(defmacro buffer-xml-output (() &body body)
-  "buffers out sax:events to a sting
-
-   xml parameters like <param:foo param:type=\"string\"><div>bar</div></param:foo>
-       are requested to be strings (presumably for string processing)
-  "
-  (with-unique-names (out-str)
-    `(with-output-to-string (,out-str)
-       (let ((cxml::*sink* (cxml::make-character-stream-sink ,out-str))
-	     (cxml::*current-element* nil)
-	     (cxml::*unparse-namespace-bindings* cxml::*initial-namespace-bindings*)
-	     (cxml::*current-namespace-bindings* nil))
-	 (setf (cxml::sink-omit-xml-declaration-p cxml::*sink*) T)
-	 (sax:start-document cxml::*sink*)
-	 ,@body  
-	 (sax:end-document cxml::*sink*)))))
-
 (defun run-template ( generator template env )
   "Runs a tal template returning the string produced"
   (buffer-xml-output ()

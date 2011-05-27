@@ -4,6 +4,7 @@
 (defpackage :net.acceleration.talcl
     (:use :common-lisp :iterate)
   (:nicknames :talcl)
+  (:import-from :buildnode :buffer-xml-output)
   (:export
    #:def-attribute-handler
    #:def-tag-handler
