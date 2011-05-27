@@ -60,7 +60,7 @@
 (defmacro adwtest (name (&rest args) &body body)
   (iter (for tag in args)
 	(setf (get tag :tests)
-	      (union (buildnode::ensure-list (get tag :tests))
+	      (union (alexandria:ensure-list (get tag :tests))
 		     (list name))))
   `(lisp-unit:define-test ,name
      (tal-log.info "~%STARTING Tal Test: ~S~%" ',name)
@@ -74,8 +74,8 @@
 (defun run-tests (&key suites tests (use-debugger T))
   (let* ((*package* (find-package :talcl-test))
 	 (lisp-unit::*use-debugger* use-debugger)
-	 (tests (append (buildnode::ensure-list tests)
-			(iter (for suite in (buildnode::ensure-list suites))
+	 (tests (append (alexandria:ensure-list tests)
+			(iter (for suite in (alexandria:ensure-list suites))
 			      (appending (get suite :tests)))))
 	 (out (with-output-to-string (*standard-output*)
 		(lisp-unit::run-test-thunks

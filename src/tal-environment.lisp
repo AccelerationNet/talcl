@@ -12,15 +12,6 @@
 	(delete #\return line)
 	line)))
 
-(defun ensure-list (thing)
-  "Returns THING as a list.
-
-If THING is already a list (as per listp) it is returned,
-otherwise a one element list containing THING is returned."
-  (if (listp thing)
-      thing
-      (list thing)))
-
 (defmacro if-bind (var test &body then/else)
   "Anaphoric IF control structure.
 
@@ -191,7 +182,7 @@ displaced array pointing to the sequence after PREFIX."
       ;;absolute name for missing file
       (return-from find-file-in-directories nil))
 
-    (dolist (root (ensure-list root-directories))
+    (dolist (root (alexandria:ensure-list root-directories))
       (let ((root (pathname root))
 	    (root-dirs (pathname-directory root)))
 	(if rel-p

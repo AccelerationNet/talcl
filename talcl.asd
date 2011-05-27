@@ -22,7 +22,7 @@
 			 (:file "generator")
 			 (:file "handlers"))
 	    ))
-  :depends-on (:buildnode :cxml :iterate))
+  :depends-on (:buildnode :cxml :iterate :alexandria))
 
 (defsystem :talcl-examples
   :description "talcl-examples examples for talcl tal templating library"
