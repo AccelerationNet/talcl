@@ -9,7 +9,7 @@
 
 (defsystem :talcl
   :description "TAL in CL"
-  :licence "LGPL"
+  :licence "BSD"
   :version "0.2"
   :components
   ((:module :src
@@ -27,7 +27,7 @@
 (defsystem :talcl-examples
   :description "talcl-examples examples for talcl tal templating library"
   :author "Acceleration.net"
-  :licence "LGPL"
+  :licence "BSD"
   :version "0.2"
   :components
   ((:module :examples
@@ -38,7 +38,7 @@
 (defsystem :talcl-test
   :description "talcl-test tests for talcl tal templating library"
   :author "Acceleration.net"
-  :licence "LGPL"
+  :licence "BSD"
   :version "0.2"
   :components
   ((:module :tests
@@ -50,7 +50,7 @@
 (defsystem :talcl-speed-tests
   :description "talcl-test tests for talcl tal templating library"
   :author "Acceleration.net"
-  :licence "LGPL"
+  :licence "BSD"
   :version "0.2"
   :components
   ((:module :tests
