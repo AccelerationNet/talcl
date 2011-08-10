@@ -50,7 +50,7 @@ See the examples directory for runable lisp code and tal templates.
   * ${nil} doesnt print anything
 
  * DOM nodes and lists / vectors of dom-nodes can be spliced into the
-   template EG: <span>$some-dom-content</span> will correctly put the
+   template EG: &lt;span>$some-dom-content&lt;/span> will correctly put the
    dom content into the template
 
 ## TAL Handlers 
@@ -353,6 +353,7 @@ TALABLE-STRINGS names a compiled function:
 ```
 
 
+```
 ;; Copyright (C) 2011 Acceleration.net, Russ Tyndall
 ;;   email: bobbysmith007@gmail.com
 ;;
@@ -385,4 +386,4 @@ TALABLE-STRINGS names a compiled function:
 ;; THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 ;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+```
