@@ -352,6 +352,12 @@ TALABLE-STRINGS names a compiled function:
   Source file: /home/ACCELERATION/russ/lisp/talcl/src/handlers.lisp
 ```
 
+## Authors
+ * [Acceleration.net](http://www.acceleration.net/) - [Donate](http://www.acceleration.net/programming/donate-to-acceleration-net/)
+  * [Russ Tyndall](http://russ.unwashedmeme.com/blog)
+  * [Nathan Bird](http://the.unwashedmeme.com/blog)
+  * [Ryan Davis](http://ryepup.unwashedmeme.com/blog)
+
 
 ```
 ;; Copyright (C) 2011 Acceleration.net, Russ Tyndall
