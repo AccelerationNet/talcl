@@ -4,7 +4,15 @@
 
 ;;;; * Compiling TAL from .tal files
 
-(defclass tal-generator () ())
+(defvar *log* nil "A log-fn that accepts a string and writes it to the log")
+
+(defun tal-log (message &rest args)
+  (when *log*
+    (funcall *log* (apply #'format nil message args))))
+
+(defclass tal-generator ()
+  ((log-fn :accessor log-fn :initarg :log-fn :initform nil
+           :documentation "A log-fn that accepts a string and writes it to the log")))
 
 (defgeneric load-tal (generator name))
 
@@ -26,19 +34,26 @@
 
 (defparameter *tal-templates* (make-hash-table :test 'equal))
 
-(defmethod template-truename ((generator file-system-generator) name)
+(defmethod template-truename ((generator file-system-generator) name
+                              &aux (*log* (log-fn generator)))
+  (tal-log "finding truename of template: ~s ~s" generator name)
   (find-file-in-directories
    name (root-directories generator)))
 
-(defmethod load-tal ((generator file-system-generator) (name string))
+(defmethod load-tal ((generator file-system-generator) (name string)
+                     &aux (*log* (log-fn generator)))
+  (tal-log "Loading tal template: ~s ~s" generator name)
   (load-tal generator (pathname name)))
 
-(defmethod load-tal ((generator file-system-generator) (name pathname))
+(defmethod load-tal ((generator file-system-generator) (name pathname)
+                     &aux (*log* (log-fn generator)))
   (let ((file-name (template-truename generator name)))
+    (tal-log "Loading with truename of template: ~s ~s" generator file-name)
     (assert file-name (name)
 	    "No template named ~S found with generator ~a."
 	    name generator)
     (let ((*tal-generator* generator))
+      (tal-log "About to compile: ~s ~s" generator file-name)
       (compile-tal-file file-name))))
 
 (defstruct (tal-template (:conc-name tal-template.))
@@ -46,71 +61,55 @@
   file-name
   function)
 
-(defun %get-tal-template-fn (file-name generator)
+(defun %get-tal-template-fn (file-name generator
+                             &aux (*log* (log-fn generator)))
   (let ((template (make-tal-template :last-load-time (file-write-date file-name)
-				     :function (let ((*tal-generator* generator))
+				     :function (let ((*tal-generator* generator)
+                                                     (*log* (log-fn generator)))
 						 (compile-tal-file file-name))
 				     :file-name file-name)))
-    (lambda (environment)
+    (lambda (environment
+        &aux (*log* (log-fn generator)))
       (let* ((file-name (tal-template.file-name template))
 	     (file-write-date (file-write-date file-name)))
+        (tal-log "Tal template: ~s ~s" file-name file-write-date)
 	(when (< (tal-template.last-load-time template) file-write-date)
 	  (let ((fun (let ((*tal-generator* generator))
+                       (tal-log "Tal Recompiling: ~s ~s ~s"
+                                file-name file-write-date (tal-template.last-load-time template))
 		       (compile-tal-file file-name))))
+            (tal-log "Tal Got new FN for: ~s ~s ~s"
+                     file-name file-write-date fun)
 	    (setf (tal-template.function template) fun
 		  (tal-template.last-load-time template) file-write-date)))
-
-	(funcall (tal-template.function template) environment)))))
+        (tal-log "Tal Executing Tal-Template: ~s ~s ~s"
+                 file-name template environment)
+	(prog1 (funcall (tal-template.function template) environment)
+          (tal-log "Tal Finished executing template:~S" file-name))))))
 
 (defmethod load-tal ((generator caching-file-system-generator)
-		     name)
-  (when (null name)
-    (error "Can't load-tal for empty(NIL) name."))
-  
+		     name
+                     &aux (*log* (log-fn generator)))
+  (when (null name) (error "Can't load-tal for empty(NIL) name."))
+  (tal-log "Tal Loading cached ~S ~S" name generator)
   (let* ((hash-val (gethash name (cache generator)))
+         true-name
 	 (template
-	     (or hash-val
-		 (if (and (pathnamep name)
-			  (probe-file name))
-		     (%get-tal-template-fn name generator)
-		     (aif (template-truename generator name)
-			  (load-tal generator it)
-			  (error "Can't find template named ~s for generator ~a."
-				 name generator))))))
-    
+           (cond (hash-val
+                  (tal-log "Tal Found cached copy ~S ~S" name hash-val)
+                  hash-val)
+                 ((and (pathnamep name) (probe-file name))
+                  (tal-log "Tal uncached template exists so compile it ~S" name)
+                  (%get-tal-template-fn name generator))
+                 ((setf true-name (template-truename generator name))
+                  (tal-log
+                   "Tal found true-name for template, so load that ~S" true-name)
+                  (load-tal generator true-name))
+                 (T (error "Can't find template named ~s for generator ~a."
+                           name generator))
+		 )))
     (prog1 template
       (unless (eql hash-val template)
 	(setf (gethash name (cache generator)) template)))))
 
 
-
-
-;; Copyright (c) 2002-2005, Edward Marco Baringer
-;; All rights reserved.
-;;
-;; Redistribution and use in source and binary forms, with or without
-;; modification, are permitted provided that the following conditions are
-;; met:
-;;
-;;  - Redistributions of source code must retain the above copyright
-;;    notice, this list of conditions and the following disclaimer.
-;;
-;;  - Redistributions in binary form must reproduce the above copyright
-;;    notice, this list of conditions and the following disclaimer in the
-;;    documentation and/or other materials provided with the distribution.
-;;
-;;  - Neither the name of Edward Marco Baringer, nor BESE, nor the names
-;;    of its contributors may be used to endorse or promote products
-;;    derived from this software without specific prior written permission.
-;;
-;; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-;; "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-;; LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-;; A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT
-;; OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-;; SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-;; LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-;; DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-;; THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
