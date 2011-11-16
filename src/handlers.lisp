@@ -141,7 +141,7 @@ the evaluated value of the attribute is nil.
 
 (def-attribute-handler tal::let (tag)
   "ATTRUBTE-HANDLER: Extend environment with a given list of bindings,
-as for LET form.
+as for LET* form.
 
 Example:
 <div tal:let='foo 3'><div tal:content='$foo'/></div>
@@ -157,7 +157,7 @@ Goes to: <div><div>3</div></div>
     (collect (list name value) into let-bindings)
     (finally
      (return
-       `(let (,@let-bindings) ,(transform-lxml-form-in-scope tag))))))
+       `(let* (,@let-bindings) ,(transform-lxml-form-in-scope tag))))))
 
 (def-tag-handler tal::lisp (tag)
   "TAG-HANDLER: evaluate the body of the tag as lisp code."
