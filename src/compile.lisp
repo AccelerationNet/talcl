@@ -361,48 +361,50 @@
 	   :specified-p T)
 	  (cdr cxml::*current-element*))))
 
+(defun gather-attrib-forms (attributes)
+  (iter
+    (for (key pre-value) in attributes)
+    (for value = (if (stringp pre-value)
+                     (parse-tal-attribute-value pre-value)
+                     pre-value))
+    (for lname = (if (consp key) (car key) key))
+    (for ns = (when (consp key) (cdr key)))
+    (if (string= ns "http://www.w3.org/2000/xmlns/")
+        ;; xmlns attribute needs to effect the namespace environment
+        (progn
+          (collect (list lname value) into namespaces)
+          (push (cons value lname) buildnode:*namespace-prefix-map*))
+        ;; otherwise collect a make attribute form.
+        (collect `(specified-attribute*
+                   ,(and ns (buildnode::get-prefix ns))
+                   ,lname ,value)
+          into attrib-forms))
+    (finally
+     (return (values attrib-forms namespaces)))))
+
 (defun transform-lxml-regular-tag (tag-name attributes body)
+  (let ((buildnode:*namespace-prefix-map* buildnode:*namespace-prefix-map*))
   (case tag-name
     (:comment `(cxml:comment ,(first body)))
     (:xml)
-    (T (let* ((namespaces nil)
-              (buildnode:*namespace-prefix-map* buildnode:*namespace-prefix-map*)
-              (attrib-forms
-               (flet ((add-ns (prefix ns)
-                        (push (list prefix ns) namespaces)
-                        (push (cons ns prefix)
-                              buildnode:*namespace-prefix-map*)
-                        nil))
-                 (loop
-                   for (key pre-value) in attributes
-                   for value = (if (stringp pre-value)
-                                   (parse-tal-attribute-value pre-value)
-                                   pre-value)
-                   collect (if (consp key)
-                               (destructuring-bind (lname . ns) key
-                                 ;; is it an xmlns attrb?
-                                 (if (string= ns "http://www.w3.org/2000/xmlns/")
-                                     (add-ns lname value)
-                                     `(cxml:attribute*
-                                       ,(buildnode::get-prefix ns)
-                                       ,lname
-                                       ,value)))
-                               `(specified-attribute* nil ,key ,value)))))
-              ;;the attrib-forms must be done ahead of this so
-              ;;that get-prefix can lookup in the ammended
-              ;;namespace-prefix-map
-              (tag-name-spec (if (consp tag-name)
-                                 (destructuring-bind (lname . ns) tag-name
-                                   `(,(buildnode::get-prefix ns) ,lname))
-                                 `(nil ,tag-name)))
-              (element-form `(cxml:with-element* ,tag-name-spec
-                               ,@attrib-forms
-                               ,@(transform-lxml-tree body))))
+    (T
+     ;;the attributes must be processed ahead of the tag-name because one of
+     ;;them might be an xmlns attribute. If so it needs to be added to the
+     ;;namespace-prefix map so that get-prefix on the tag-name will work.
+     (multiple-value-bind (attrib-forms namespaces)
+         (gather-attrib-forms attributes)
+       (let ((content `(cxml:with-element*
+                        ,(if (consp tag-name)
+                             (destructuring-bind (lname . ns) tag-name
+                               `(,(buildnode::get-prefix ns) ,lname))
+                             `(nil ,tag-name))
+                        ,@attrib-forms
+                        ,@(transform-lxml-tree body))))
+         ;; Wrap the content in cxml:with-namespace forms for each one of the
+         ;; given namespaces.
          (dolist (p namespaces)
-           (setf element-form `(cxml:with-namespace ,p
-                                 ,element-form)))
-         element-form))
-    ))
+           (setf content `(cxml:with-namespace ,p ,content)))
+         content))))))
 
 ;; this is used to pass variables up to the enclosing scope
 ;; from lower in the tal tree, (ie def tags)
