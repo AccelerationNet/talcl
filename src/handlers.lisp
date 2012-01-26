@@ -20,6 +20,32 @@
       (transform-lxml-form
        `(,tag-name ,tag-attributes ,@tag-body)))))
 
+
+(def-tag-handler %eval (tag)
+  (third tag))
+
+(def-attribute-handler tal::plist-attrs (tag)
+  "Convert a plist returned from the value of this attribute into attributes on this tag."
+  (flet ((emit-attributes (plist)
+           (iter (for (key value) on plist by #'cddr)
+             (for lname = (if (consp key) (car key) key))
+             (for ns = (when (consp key) (cdr key)))
+             (if (string= ns "http://www.w3.org/2000/xmlns/")
+                 (error "Can't handle xmlns here.")
+                 (specified-attribute*
+                  (and ns (buildnode::get-prefix ns))
+                  lname value)))))
+  
+    (destructure-tag (tag tal::plist-attrs)
+      (transform-lxml-form
+       `(,tag-name ,tag-attributes
+         (%eval ()
+          (funcall ,#'emit-attributes
+           ,(read-tal-expression-from-string tal::plist-attrs)))
+         ,@tag-body))
+      )))
+
+
 (def-attribute-handler tal::content (tag)
   "ATTRIBUTE-HANDLER:
 Replaces the content of the tag with the evaluated value of the
