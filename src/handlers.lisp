@@ -125,7 +125,7 @@ Gets output as:
                 (cxml:unescaped ,value))))
     (T form)))
 
-(defun %emit-tagged-content (value &optional escape)
+(defmethod %emit-tagged-content (value &optional escape)
   (typecase value
     (null nil)
     (string (if escape
