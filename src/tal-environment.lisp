@@ -51,7 +51,7 @@ ELSE will be executed."
   (declare (ignore direction external-format))
   (when direction-provided-p
     (error "Can't specifiy :DIRECTION in WITH-INPUT-FILE."))
-  `(with-open-file (,stream-name ,file-name :direction :input 
+  `(with-open-file (,stream-name ,file-name :direction :input
                     ,@args)
      ,@body))
 
@@ -69,7 +69,7 @@ ENCODING-KEYWORD-TO-NATIVE, see ENCODING-KEYWORD-TO-NATIVE to
 possible values."
   (with-input-from-file
       (file-stream pathname :external-format external-format)
-    (with-output-to-string (datum) 
+    (with-output-to-string (datum)
       (let ((buffer (make-array buffer-size :element-type element-type)))
 	(loop for bytes-read = (read-sequence buffer file-stream)
 	      do (write-sequence buffer datum :start 0 :end bytes-read)
@@ -173,35 +173,41 @@ displaced array pointing to the sequence after PREFIX."
    file is actually contained in those directories
    i.e. prevent escaping the bounds via ../../../"
   (let* ((name (pathname name))
-	 (dir-list (pathname-directory name))
-	 (rel-p (or (null dir-list)
-		    (eql :relative (first dir-list)))))
+         (dir-list (pathname-directory name))
+         (rel-p (or (null dir-list)
+                    (eql :relative (first dir-list)))))
 
     (when (and (not rel-p)
-	       (not (probe-file name)))
+               (not (probe-file name)))
       ;;absolute name for missing file
       (return-from find-file-in-directories nil))
 
     (dolist (root (alexandria:ensure-list root-directories))
       (let ((root (pathname root))
-	    (root-dirs (pathname-directory root)))
-	(if rel-p
-	    (let ((candidate (probe-file (eliminate-..-in-path
-                                          (merge-pathnames name root)))))
-	      (when (and candidate
-                         ; ensure it is a file and not a directory.
-                         (pathname-name candidate))
-		;;found a file, now check that it is in the roots. 
-		(return-from find-file-in-directories
-		  (find-file-in-directories candidate root-directories))))
-	    
-	    ;; we have an absolute file path, if root is absolute, we
-	    ;; should verify that the file is rooted in this directory
-	    ;; if the root is relative, assume we did stuff correctly
-	    ;; above
-	    (when (or (not (eql :absolute (car root-dirs)))
-		      (starts-with dir-list root-dirs :test #'equal))
-	      (return-from find-file-in-directories (probe-file name))))))))
+            (root-dirs (pathname-directory root)))
+        (if rel-p
+            (let* ((candidate (eliminate-..-in-path
+                               (merge-pathnames name root)))
+
+                   ;; probe-file will return the truename (eliminating
+                   ;; symlinks) which might cause us to fail the following
+                   ;; containment check, keep track of the realname separately
+                   (realname (probe-file candidate)))
+
+              ;;ensure existance, and that it is a file, not a directory.
+              (when (and realname (pathname-name realname))
+                ;;found a file, now check that it is in the roots.
+                (return-from find-file-in-directories
+                  ;; use the raw candidate, not the truename version.
+                  (find-file-in-directories candidate root-directories))))
+
+            ;; we have an absolute file path, if root is absolute, we
+            ;; should verify that the file is rooted in this directory
+            ;; if the root is relative, assume we did stuff correctly
+            ;; above
+            (when (or (not (eql :absolute (car root-dirs)))
+                      (starts-with dir-list root-dirs :test #'equal))
+              (return-from find-file-in-directories (probe-file name))))))))
 
 ;;;;;;;;;;;;;;; END BASIC UTILS
 
@@ -245,7 +251,7 @@ displaced array pointing to the sequence after PREFIX."
   (iter (for (k v . rest) on env by #'cddr)
 	(collect k into keys)
 	(collect v into values)
-	(finally 
+	(finally
 	 (progv keys values
 	   ;; pass env to funcall to assist debugging
 	   (return (funcall tal-fn env))
@@ -273,15 +279,15 @@ displaced array pointing to the sequence after PREFIX."
 
 
 ;; Copyright (c) 2002-2005, Edward Marco Baringer
-;; All rights reserved. 
-;; 
+;; All rights reserved.
+;;
 ;; Redistribution and use in source and binary forms, with or without
 ;; modification, are permitted provided that the following conditions are
 ;; met:
-;; 
+;;
 ;;  - Redistributions of source code must retain the above copyright
 ;;    notice, this list of conditions and the following disclaimer.
-;; 
+;;
 ;;  - Redistributions in binary form must reproduce the above copyright
 ;;    notice, this list of conditions and the following disclaimer in the
 ;;    documentation and/or other materials provided with the distribution.
@@ -289,7 +295,7 @@ displaced array pointing to the sequence after PREFIX."
 ;;  - Neither the name of Edward Marco Baringer, nor BESE, nor the names
 ;;    of its contributors may be used to endorse or promote products
 ;;    derived from this software without specific prior written permission.
-;; 
+;;
 ;; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 ;; "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 ;; LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
