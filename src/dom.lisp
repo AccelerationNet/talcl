@@ -2,6 +2,14 @@
 
 (defclass template-processing-sink (cxml:broadcast-handler) ())
 
+(defmethod cxml:sink-omit-xml-declaration-p ((sink template-processing-sink))
+  (cxml:sink-omit-xml-declaration-p (first (slot-value sink 'cxml::handlers))))
+
+(defmethod (setf cxml:sink-omit-xml-declaration-p) (newval (sink template-processing-sink))
+  (dolist (sink (slot-value sink 'cxml::handlers))
+    (setf (cxml:sink-omit-xml-declaration-p sink) newval)))
+
+
 (defun make-template-processing-sink (&rest handlers)
   (make-instance 'template-processing-sink :handlers handlers))
 
