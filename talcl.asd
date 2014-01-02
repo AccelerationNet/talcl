@@ -22,7 +22,7 @@
 			 (:file "generator")
 			 (:file "handlers"))
 	    ))
-  :depends-on (:buildnode :cxml :iterate :alexandria))
+  :depends-on (:buildnode :cxml :iterate :alexandria :symbol-munger :cl-ppcre))
 
 (defsystem :talcl-examples
   :description "talcl-examples examples for talcl tal templating library"
@@ -45,7 +45,7 @@
 	    :serial t
 	    :components ((:file "setup")
 			 (:file "compile"))))
-  :depends-on (:talcl :lisp-unit :buildnode-xhtml))
+  :depends-on (:talcl :lisp-unit2 :buildnode-xhtml))
 
 (defsystem :talcl-speed-tests
   :description "talcl-test tests for talcl tal templating library"
@@ -57,12 +57,12 @@
 	    :serial t
 	    :components ((:file "setup")
 			 (:file "speed"))))
-  :depends-on (:talcl :lisp-unit :buildnode-xhtml :talcl-examples))
+  :depends-on (:talcl :lisp-unit2 :buildnode-xhtml :talcl-examples))
 
 (defmethod asdf:perform ((o asdf:test-op) (c (eql (find-system :talcl))))
   (asdf:oos 'asdf:load-op :talcl-test)
-  (funcall (intern "RUN-TESTS" :talcl-test)
-	   :use-debugger nil))
+  (let ((*package* (find-package :talcl-test)))
+    (eval (read-from-string "(run-tests)"))))
 
 ;;;; Copyright (C) 2011 Acceleration.net, Russ Tyndall
 ;;;;   email: bobbysmith007@gmail.com
