@@ -26,21 +26,24 @@
    (buffer :accessor buffer :initarg :buffer :initform nil
 	   :documentation "The events buffered so far")))
 
-(defmethod start-buffering ((o buffering-sink))
-  (setf (buffering o) T))
+(defgeneric start-buffering (sink)
+  (:method ((o buffering-sink))
+    (setf (buffering o) T)))
 
-(defmethod stop-buffering-and-flush ((o buffering-sink) &optional output-sink)
-  (setf (flushing o) T
-	(buffering o) nil)
-  (iter (for (fn . args) in (reverse (buffer o)))
-	;; if we have
-	(apply fn (or output-sink o) args))
-  ;; Set buffering to nil after flusing, so that we can use
-  ;; that flag to not double buffer
-  (setf (flushing o) nil))
+(defgeneric stop-buffering-and-flush (buffer &optional output-sink)
+  (:method ((o buffering-sink) &optional output-sink)
+    (setf (flushing o) T
+          (buffering o) nil)
+    (iter (for (fn . args) in (reverse (buffer o)))
+      ;; if we have
+      (apply fn (or output-sink o) args))
+    ;; Set buffering to nil after flusing, so that we can use
+    ;; that flag to not double buffer
+    (setf (flushing o) nil)))
 
-(defmethod clear-buffer ((o buffering-sink))
-  (setf (buffer o) nil))
+(defgeneric clear-buffer (sink)
+  (:method ((o buffering-sink))
+    (setf (buffer o) nil)))
 
 (macrolet ((define-proxy-method (name (&rest args))
 	       `(defmethod ,name ((handler buffering-sink) ,@args)
