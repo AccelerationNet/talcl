@@ -4,7 +4,7 @@
   (:use :common-lisp
 	:iterate
 	:talcl
-	:lisp-unit)
+	:lisp-unit2)
   (:shadow :run-tests))
 
 (in-package :talcl-test)
@@ -17,10 +17,10 @@
     (format stream "~2,'0d:~2,'0d:~2,'0d "  h min s)))
 
 (defun tal-log.info (message &rest args)
-  (format *standard-output* "~&")
-  (log-time (get-universal-time) *standard-output*)
-  (apply #'format *standard-output* message args)
-  (format *standard-output* "~%"))
+  (format lisp-unit2:*test-stream* "~&")
+  (log-time (get-universal-time) lisp-unit2:*test-stream*)
+  (apply #'format lisp-unit2:*test-stream* message args)
+  (format lisp-unit2:*test-stream* "~%"))
 
 (with-package-iterator (sym '(:talcl) :internal)
   (iter (multiple-value-bind (more? symbol accessibility pkg) (sym)
@@ -58,34 +58,29 @@
 					  :talcl #p"examples/"))))
 
 (defmacro adwtest (name (&rest args) &body body)
-  (iter (for tag in args)
-	(setf (get tag :tests)
-	      (union (alexandria:ensure-list (get tag :tests))
-		     (list name))))
-  `(lisp-unit:define-test ,name
-     (tal-log.info "~%STARTING Tal Test: ~S~%" ',name)
+  `(lisp-unit2:define-test ,name (:tags '(,@args))
      (let* ((talcl::*tal-generator* *test-generator*)
 	    (out (talcl::buffer-xml-output () ,@body)))
        (when (plusp (length out))
 	 (tal-log.info
-	  "~%Tal Test: ~S ~%-------------~%~a~%-------------~%" ',name out)
+	  "~%~S OUTPUT: ~%-------------~%~a~%-------------~%" ',name out)
 	 ))))
 
-(defun run-tests (&key suites tests (use-debugger T))
-  (let* ((*package* (find-package :talcl-test))
-         (lisp-unit:*print-failures* t)
-         (lisp-unit:*print-errors* t)
-	 (lisp-unit::*use-debugger* use-debugger)
-	 (tests (append (alexandria:ensure-list tests)
-			(iter (for suite in (alexandria:ensure-list suites))
-                          (appending (get suite :tests)))))
-         (actual-std-out *standard-output*)
-	 (out (with-output-to-string (s)
-		(let ((*standard-output*
-                        (make-broadcast-stream s actual-std-out)))
-                  (if (null tests)
-                      (lisp-unit::%run-all-thunks)
-                      (lisp-unit::%run-thunks tests))))))
-    (format *standard-output*
-     "~&~% ** TEST RESULTS: TALCL ** ~%-----------~%~A~%------ END TEST RESULTS ------~%"
-     out)))
+(defun run-tests (&key suites tests)
+  (format lisp-unit2:*test-stream* "~%")
+  (prog1
+      (let* ((*package* (find-package :talcl-test))
+             (res (lisp-unit2:run-tests
+                   :tests tests
+                   :tags suites
+                   :name :talcl
+                   :run-contexts #'lisp-unit2:with-summary-context
+                   )))
+    
+        (or
+         (when talcl::*rely-on-warnings-for-variables*
+           (let (talcl::*rely-on-warnings-for-variables*)
+             (list res (rerun-tests res))))
+         res))
+    (format lisp-unit2:*test-stream* "~%"))
+  )

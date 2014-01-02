@@ -218,11 +218,13 @@
                 This is included content ${ (incf *test-count*) }, param:${value}
                 <span class=\"content\" tal:content=\"value\" >${ (assert-true nil) }</span>
                 <tal:tal tal:replace=\"value\" />
-                ${ (assert-true (typep value 'buffering-sink ))
-                   (assert-true (%test-include-body-name
+                ${ (assert-typep 'buffering-sink value )
+                   (assert-true (and
+                                 (typep value 'buffering-sink )
+                                 (%test-include-body-name
                                  *test-count*
                                  (talcl::buffer-xml-output ()
-                                    (stop-buffering-and-flush value cxml::*sink*))))
+                                    (stop-buffering-and-flush value cxml::*sink*)))))
                  }
             </div>")
   (add-tal *test-generator* "test"
@@ -354,15 +356,17 @@
 (adwtest test-def (compile-tests)
   (let* ((it "<div xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
                    tal:in-package=\"talcl-test\"
-                   tal:let=\"y 3\">
+                   tal:let=\"y 3 cnt 0\">
                  <tal:def tal:name=\"test-def\">
                     <span tal:let=\"x 3\">
                      Test is: ${ (assert-equal x y) }
+                     ${ (incf cnt) }
                     </span>
                  </tal:def>
                  ${ (assert-true test-def) }
                  ${ test-def }
                  ${ test-def }
+                 ${ (assert cnt 2) }
           </div>")
 	 (fn (talcl::compile-tal-string it)))
     (talcl::%call-template-with-tal-environment fn ())))
@@ -372,7 +376,7 @@
                    tal:in-package=\"talcl-test\"
                    tal:let=\"y 3\">
                  <tal:def tal:name=\"test-def\" tal:type=\"string\">
-                    This is a string full of text, not some stupid xml yuck
+                    This is a string full of text, not some stupid xml yuck $y
                  </tal:def>
                  <tal:def tal:name=\"test-def2\" tal:type=\"string\">Yippie</tal:def>
                  ${ (assert-true (stringp test-def)) }
