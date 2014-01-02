@@ -595,6 +595,8 @@
 			 :format-control message
 			 :format-args args)))
 
+(define-condition tal-runtime-error (tal-runtime-condition error) ())
+
 (defun find-expression-line/col-number (expr)
   (with-input-from-string (s *string-being-compiled*)
     (let ((target (search expr *string-being-compiled* :test #'char=)))
@@ -622,7 +624,7 @@
 			   :format-args (remove nil (list expression loc error))))))
 
 (defun tal-runtime-error (original-error message &rest args)
-  (error (make-condition 'tal-runtime-condition
+  (error (make-condition 'tal-runtime-error
 			 :original-error original-error
 			 :format-control message
 			 :format-args args)))

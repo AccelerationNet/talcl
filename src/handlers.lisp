@@ -125,27 +125,28 @@ Gets output as:
                 (cxml:unescaped ,value))))
     (T form)))
 
-(defmethod %emit-tagged-content (value &optional escape)
-  (typecase value
-    (null nil)
-    (string (if escape
-		(cxml:text value)
-		(cxml:unescaped value)))
-    (dom:node (dom-walk-helper value))
-    (function (funcall value escape))
-    (buffering-sink
+(defgeneric %emit-tagged-content (value &optional escape)
+  (:method (value &optional escape)
+    (typecase value
+      (null nil)
+      (string (if escape
+                  (cxml:text value)
+                  (cxml:unescaped value)))
+      (dom:node (dom-walk-helper value))
+      (function (funcall value escape))
+      (buffering-sink
        ;; makes sure our sink is ready by flushing
        ;; delayed events
        (cxml:with-output-sink (cxml::*sink*)
 	 (stop-buffering-and-flush value cxml::*sink*)))
-    (list
+      (list
        (case (first value)
 	 (eval (eval (second value)))
 	 (escaped (%emit-tagged-content (rest value) t))
 	 (unescaped (%emit-tagged-content (rest value) nil))
 	 (T (dolist (v value)
 	      (%emit-tagged-content v escape)))))
-    (T (%emit-tagged-content (princ-to-string value) escape))))
+      (T (%emit-tagged-content (princ-to-string value) escape)))))
 
 (def-attribute-handler tal::when (tag)
   "ATTRIBUTE-HANDLER: Causes this tag to only appear when
