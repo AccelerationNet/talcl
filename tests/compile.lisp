@@ -1,5 +1,19 @@
 (in-package :talcl-test)
 
+(adwtest test-missing-variable-declarations (compile-tests missing-values)
+  (let* ((it "<div class=\"welcome frontPageMenu\"
+               xmlns:tal=\"http://common-lisp.net/project/bese/tal/core\"
+               tal:in-package=\"talcl-test\" id=\"${a}\">${b}<span>${c}</span></div>"
+            )
+        (fn (talcl::compile-tal-string-to-lambda
+             it :declare-unbound-variables-special? nil)))
+    (assert-equal '(a b c) (find-missing-template-variables fn))
+    (assert-equal '(a b c) (find-missing-template-variables-from-unbound-variable-errors fn))
+    #+sbcl
+    (assert-equal '(a b c) (find-missing-template-variables-from-warnings fn))
+    
+    ))
+
 (adwtest test-comment (compile-tests)
   (let* ((comment "<!-- Awesome Comment -->")
 	 (it (format
@@ -366,7 +380,8 @@
                  ${ (assert-true test-def) }
                  ${ test-def }
                  ${ test-def }
-                 ${ (assert cnt 2) }
+                 currently def is run once at definition and includable as a string thereafter
+                 ${ (assert-eql cnt 1) }
           </div>")
 	 (fn (talcl::compile-tal-string it)))
     (talcl::%call-template-with-tal-environment fn ())))

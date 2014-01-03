@@ -180,11 +180,12 @@ Goes to: <div><div>3</div></div>
     ;; returns a progn but we just need the list of sub exprs
     (with tal-expressions = (cdr (read-tal-expression-from-string let-attrib t)))
     (for (name value . rest) on tal-expressions by #'cddr)
-    (collect `(cons ',name ,value) into env-bindings)
     (collect (list name value) into let-bindings)
     (finally
      (return
-       `(let* (,@let-bindings) ,(transform-lxml-form-in-scope tag))))))
+       `(let* (,@let-bindings)
+         (declare (ignorable ,@(mapcar #'car let-bindings)))
+         ,(transform-lxml-form-in-scope tag))))))
 
 (def-tag-handler tal::lisp (tag)
   "TAG-HANDLER: evaluate the body of the tag as lisp code."

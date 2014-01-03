@@ -534,7 +534,12 @@
 	   (call-lambda-with-default-missing-value #'body)
 	   )))))
 
-(defun compile-tal-string-to-lambda (string &optional (expression-package *package*))
+(defun %in-common-lisp (s)
+  (eql (find-package :common-lisp)
+       (symbol-package s)))
+
+(defun compile-tal-string-to-lambda (string &key (expression-package *package*)
+                                            (declare-unbound-variables-special? T))
   "Returns the source code for the tal function form the tal text STRING."
   (let* ((*string-being-compiled* string)
 	 (*package* (find-package :talcl))
@@ -542,58 +547,102 @@
 	 (parse-tree (cxml:parse string
 				 (make-interner *uri-to-package*
 						(make-extended-xmls-builder
-						 :include-namespace-uri t)))))
-    (compile-tal-parse-tree-to-lambda parse-tree expression-package)))
+						 :include-namespace-uri t))))
+         (form (compile-tal-parse-tree-to-lambda parse-tree expression-package)))
+    (when declare-unbound-variables-special?
+      (setf form
+            `(,(first form) ,(second form)
+              ;; apparently we violate package locks if we declare anything in CL special
+              ;; (at least in sbcl, so let that warning percolate up (it will still be special))
+              ;; just not declared to be so
+              (declare (special ,@(iter (for s in (find-missing-template-variables form ))
+                                    (unless (%in-common-lisp s)
+                                      (collect s)))))
+              ,@(cddr form))))
+    form))
 
 (defun compile-tal-string (string &optional
-			   (expression-package (find-package :common-lisp-user)))
+                                  (expression-package (find-package :common-lisp-user))
+                           &aux warnings)
   (let* ((*break-on-signals* nil)
-	 (lamb (compile-tal-string-to-lambda string expression-package)))
+	 (lamb (compile-tal-string-to-lambda string :expression-package expression-package))
+         fn)
     ;(break "~S" lamb)
-    (compile nil lamb)))
+    (handler-bind ((warning
+                         (lambda(c) (push c warnings)
+                           (muffle-warning c))))
+          (setf fn (compile nil lamb)))
+      (iter (for w in warnings) (tal-re-warn w))
+    fn))
 
 (defun compile-tal-file (pathname &optional
-			 (expression-package (find-package :common-lisp-user)))
+                                  (expression-package (find-package :common-lisp-user))
+                                  &aux fn)
   (let ((*name-being-compiled* pathname))
-  (restart-case
-      (with-tal-compilation-unit pathname
-	(compile-tal-string (read-tal-file-into-string pathname) expression-package))
-    (retry-compile-tal-file ()
-      :report (lambda (stream)
-		(format stream "Retry compiling template ~s" pathname))
-      (compile-tal-file pathname expression-package)))))
+    (iter
+      (restart-case
+          (progn
+            (with-tal-compilation-unit pathname
+              (setf fn (compile-tal-string (read-tal-file-into-string pathname) expression-package)))
+            (finish))
+        (retry-compile-tal-file ()
+          :report (lambda (stream)
+                    (format stream "Retry compiling template ~s" pathname))
+          )))
+    fn))
 
 (define-condition tal-compilation-condition (simple-condition)
   ((format-control :accessor format-control :initarg :format-control :initform nil)
-   (format-args :accessor format-args :initarg :format-args :initform nil))
+   (format-args :accessor format-args :initarg :format-args :initform nil)
+   (original-condition :accessor original-condition :initarg :original-condition :initform nil)
+   (template :accessor template :initarg :template :initform *name-being-compiled*))
   (:report (lambda (c s)
-	     (apply #'format
-	      s
-	      (format-control c)
-	      (format-args c)))))
+             (flet ((p (string args)
+                      (when string
+                        (apply #'format s string (alexandria:ensure-list args)))))
+               (p "While Compiling:~A~%" (template c))
+               (when (original-condition c)
+                 (p "Encountered: ~A~%" (original-condition c)))
+               (p (format-control c) (format-args c))))))
 
 (define-condition tal-runtime-condition (simple-condition)
   ((format-control :accessor format-control :initarg :format-control :initform nil)
    (format-args :accessor format-args :initarg :format-args :initform nil)
-   (original-error :accessor original-error :initarg :original-error :initform nil))
+   (original-error :accessor original-error :initarg :original-error :initform nil)
+   (template :accessor template :initarg :template :initform *name-being-compiled*))
   (:report (lambda (c s)
-	     (apply #'format
-	      s
-	      (format-control c)
-	      (format-args c)))))
+             (flet ((p (string args)
+                      (when string
+                        (apply #'format s string (alexandria:ensure-list args)))))
+               (p "While Running:~A~%" (template c))
+               (when (original-error c)
+                 (p "Encountered: ~A~%" (original-condition c)))
+               (p (format-control c) (format-args c))))))
 
 (define-condition tal-compilation-warning (tal-compilation-condition warning) ())
 
 (defun tal-warn (message &rest args)
-  (warn (make-condition 'tal-compilation-warning
-			:format-control message
-			:format-args args)))
+  (warn 'tal-compilation-warning
+        :format-control message
+        :format-args args))
+
+(defun tal-re-warn ( c &optional message &rest args )
+  (warn 'tal-compilation-warning
+         :original-condition c
+         :format-control message
+         :format-args args))
 
 (define-condition tal-compilation-error (tal-compilation-condition error) ())
 (defun tal-error (message &rest args)
-  (error (make-condition 'tal-compilation-error
-			 :format-control message
-			 :format-args args)))
+  (error 'tal-compilation-error
+         :format-control message
+         :format-args args))
+
+(defun tal-re-error (c &optional message &rest args)
+  (error 'tal-compilation-error
+         :original-condition c
+         :format-control message
+         :format-args args))
 
 (define-condition tal-runtime-error (tal-runtime-condition error) ())
 
@@ -628,6 +677,58 @@
 			 :original-error original-error
 			 :format-control message
 			 :format-args args)))
+
+
+(defun find-missing-template-variables-from-warnings (lambda-form &aux unbound-vars)
+  (handler-bind ((warning (lambda (c)
+                            (when
+                                #+sbcl
+                                (cl-ppcre:scan "(?i)undefined variable" (format nil "~A" c))
+                                #-sbcl nil
+                              (let ((name (second (simple-condition-format-arguments c))))
+                                (pushnew name unbound-vars))
+                              (muffle-warning c)))))
+    (compile nil lambda-form))
+  (reverse unbound-vars))
+
+;; (defun %arg-form (var) `((,var ,var) (get-env ',var)))
+
+(defun find-missing-template-variables-from-unbound-variable-errors (lambda-form)
+  "Find all the missing variables from their unbound-variable errors
+
+   loop compiling each time till we get no more of these errors each time we add a new key arg
+   defaulting to a value from the base environment
+  "
+  (let ( unbound-vars
+         ;; *default-missing-template-value*
+         (lambda-form (copy-list lambda-form)))
+    (labels ((handler (c &aux (name (cell-error-name c)))
+               (pushnew name unbound-vars)
+               (continue c)))
+      (handler-bind ((warning #'muffle-warning)
+                     (unbound-variable #'handler)
+                     (tal-runtime-condition
+                       (lambda (c)
+                         (when (typep (original-error c) 'unbound-variable)
+                           (handler (original-error c))))))
+        (iter
+          (with-simple-restart (continue "Continue")
+            (progv unbound-vars (make-list (length unbound-vars))
+                (buffered-template-call
+                 (compile nil lambda-form) nil))
+            (finish)))))
+    (reverse unbound-vars)))
+
+(defvar *rely-on-warnings-for-variables* #+sbcl t #-sbcl nil)
+
+(defun find-missing-template-variables
+    (lambda-form &key (rely-on-warnings? *rely-on-warnings-for-variables*))
+  "If you set rely-on-warnings, MAKE sure your warnings are correctly listed below"
+  ;; the compile loop is to avoid relying on simple-warnings undefined-variable
+  ;; during compilation
+  (if rely-on-warnings?
+      (find-missing-template-variables-from-warnings lambda-form)
+      (find-missing-template-variables-from-unbound-variable-errors lambda-form)))
 
 ;; Copyright (c) 2002-2005, Edward Marco Baringer
 ;; All rights reserved. 

@@ -12,7 +12,11 @@ See the examples directory for runable lisp code and tal templates.
  * To be more flexible, easier to use, easier to debug, and with more
    helpful error messages than the original TAL from arnesi and ucw.
    TAL now has a single execution environment (the common lisp env)
-   rather than its own private tal environment.
+   rather than its own private tal environment.  It accomplishes this
+   by runtime binding using progv. (IE: Most template variables are
+   declared special. however due to package locks, anything that is in
+   package :cl will not be declared, and thus produce warnings, but
+   will still work correctly.)
 
  * integrate well with cxml dom & our buildnode library.  We want to
    be able to embed template content into our dom document in an
