@@ -616,7 +616,7 @@
                         (apply #'format s string (alexandria:ensure-list args)))))
                (p "While Running:~A~%" (template c))
                (when (original-error c)
-                 (p "Encountered: ~A~%" (original-condition c)))
+                 (p "Encountered: ~A~%" (original-error c)))
                (p (format-control c) (format-args c))))))
 
 (define-condition tal-compilation-warning (tal-compilation-condition warning) ())
