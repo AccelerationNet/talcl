@@ -597,13 +597,12 @@
    (original-condition :accessor original-condition :initarg :original-condition :initform nil)
    (template :accessor template :initarg :template :initform *name-being-compiled*))
   (:report (lambda (c s)
-             (flet ((p (string args)
+             (flet ((p (string &rest args)
                       (when string
-                        (apply #'format s string (alexandria:ensure-list args)))))
-               (p "While Compiling:~A~%" (template c))
-               (when (original-condition c)
-                 (p "Encountered: ~A~%" (original-condition c)))
-               (p (format-control c) (format-args c))))))
+                        (apply #'format s string args))))
+               (p "While Compiling:~A~%" (template c))               
+               (p "Encountered: ~A~%" (original-condition c))
+               (apply #'p (format-control c) (format-args c))))))
 
 (define-condition tal-runtime-condition (simple-condition)
   ((format-control :accessor format-control :initarg :format-control :initform nil)
