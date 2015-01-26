@@ -427,6 +427,16 @@
 	`(let (,@*tal-defs*) ,processed-body)
 	processed-body)))
 
+(defun %buffer-output-till-success (body-fn)
+  "A function that buffers sax events in body till we are sure that body will
+   execute completely and correctly. Mostly used while providing missing
+   template values"
+  (let ((parent-sink cxml::*sink*)
+        (cxml::*sink* (make-instance 'buffering-sink)))
+    (start-buffering cxml::*sink*)
+    (funcall body-fn)
+    (stop-buffering-and-flush cxml::*sink* parent-sink)))
+
 (defun call-lambda-with-unbound-variable-restarts (lambda)
   "When you enconter an unbound variable while executing a template function,
     provide a restart to bind that variable so that the template can be executed
@@ -438,7 +448,7 @@
    see also: with-missing-value-handler which shortcuts the rather tedious
       handler-bind for this into a bare minimum handler
   "
-  (let ( unbound-vars unbound-vals missing )
+  (let ( unbound-vars unbound-vals missing (retry t))
     (labels ((read-new-value ()
 	       (format t "Enter a new value: ")
 	       (multiple-value-list (eval (read))))
@@ -450,20 +460,22 @@
 			 ;; bind missing (for use in the restart) and allow the error
 			 ;; to bubble
 			 ((unbound-variable
-			   (lambda (c) (setf missing (cell-error-name c))))
+                            (lambda (c) (setf missing (cell-error-name c))))
 			  (tal-runtime-condition
-			   (lambda (c)
-			     (when (typep (original-error c) 'unbound-variable)
-			       (setf missing (cell-error-name (original-error c)))))))
-		       (funcall lambda)))
+                            (lambda (c)
+                              (when (typep (original-error c) 'unbound-variable)
+                                (setf missing (cell-error-name (original-error c)))))))
+		       (%buffer-output-till-success lambda)))
 		 (set-value (val)
 		   ;; after setting the unbound variable rerun the template function
 		   :report (lambda (s) (format s "Set A Value for ~A" missing))
 		   :interactive read-new-value
 		   (push missing unbound-vars)
 		   (push val unbound-vals)
-		   (try-run)))))
-      (try-run))))
+                   (setf retry t)))))
+      (iter (while retry)
+        (setf retry nil)
+        (try-run)))))
 
 (defvar *default-missing-template-value*)
 ;; A default value to splice in whenever you encounter an unbound variable
