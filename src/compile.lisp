@@ -612,7 +612,8 @@
              (flet ((p (string &rest args)
                       (when string
                         (apply #'format s string args))))
-               (p "While Compiling:~A~%" (template c))               
+               (p "While Compiling:~A~%" (or (ignore-errors (template c))
+                                             "<missing template>"))               
                (p "Encountered: ~A~%" (original-condition c))
                (apply #'p (format-control c) (format-args c))))))
 
@@ -625,7 +626,8 @@
              (flet ((p (string args)
                       (when string
                         (apply #'format s string (alexandria:ensure-list args)))))
-               (p "While Running:~A~%" (template c))
+               (p "While Running:~A~%" (or (ignore-errors (template c))
+                                           "<missing template>"))
                (when (original-error c)
                  (p "Encountered: ~A~%" (original-error c)))
                (p (format-control c) (format-args c))))))
