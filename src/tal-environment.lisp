@@ -245,6 +245,11 @@ displaced array pointing to the sequence after PREFIX."
       (talcl::%call-template-with-tal-environment template-function env)
       sink)))
 
+(defvar *tal-env* ()
+  "When calling a function with then environment, we progv the variables in
+   This is a separate plist style binding of variables that can be accessed
+    or used during debugging")
+
 (defun %call-template-with-tal-environment (tal-fn env)
   "This will call a template-fn with all the tal-environment variables
    bound into the lisp dynamic environment."
@@ -254,7 +259,8 @@ displaced array pointing to the sequence after PREFIX."
 	(finally
 	 (progv keys values
 	   ;; pass env to funcall to assist debugging
-	   (return (funcall tal-fn env))
+           (let ((*tal-env* env))
+             (return (funcall tal-fn env)))
 	   ))))
 
 (defun call-template-with-tal-environment (generator template env)
