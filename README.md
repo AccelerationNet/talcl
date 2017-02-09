@@ -3,11 +3,16 @@
 This library is a significant branch of the TAL implementation found in arnesi / ucw
 
 ## Examples
+
 See the examples directory for runable lisp code and tal templates.
 
 ## Primary Goals
+
+Flexibility, Debugability, and Consistency !
+
  * To make working with templates (particularly XML/HTML) simple and
-   support designer type folks working on them.
+   support designer type folks working on them. Support the goal of 
+   non-lispers contributing to projects
 
  * To be more flexible, easier to use, easier to debug, and with more
    helpful error messages than the original TAL from arnesi and ucw.
@@ -17,12 +22,36 @@ See the examples directory for runable lisp code and tal templates.
    declared special. however due to package locks, anything that is in
    package :cl will not be declared, and thus produce warnings, but
    will still work correctly.)
+   
+ * Easier to debug (again), it was very difficult to deduce what was
+   wrong in most other template libraries, and I wanted to easily tell
+   what part of the file was broken.
+   
+ * Runtime information about what handlers and variables are available
+   in the environment, can be accessed `<tal:print-handlers>`
+   `<tal:describe-handlers>`, `<tal:print-env>`
+   
+ * can easily include "bodies" that are passed as parameters to 
+   subtemplates
+   See: `examples/window.tal`
 
  * integrate well with cxml dom & our buildnode library.  We want to
    be able to embed template content into our dom document in an
    efficient manner.  Currently these are stored as processing
    instructions in the dom, and in serialization we play out the sax
    events we buffered when processing the template
+
+ * Tal tags can just be functions in common lisp that return cxml:dom 
+   snippets (see: buildnode)
+   
+ * Lisp functions can just return direct stream writes / strings to the
+   output document using
+   `<tal:content-as-is>` - bypasses all validation careful!
+   
+ * Plain text template support -> `<tal:tal> stuff </tal:tal>` renders
+   as just the text (can be the whole template).
+ 
+ 
 
 ## Changes From Arnesi / UCW tal
  * Available without loading arnesi, yaclml, or ucw
